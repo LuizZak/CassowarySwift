@@ -40,7 +40,7 @@ public final class Symbol {
         case dummy
     }
 
-    private(set) var symbolType: SymbolType
+    let symbolType: SymbolType
 
     public init() {
         symbolType = .invalid

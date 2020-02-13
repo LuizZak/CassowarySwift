@@ -200,8 +200,7 @@ public final class Row {
      If the symbol does not exist in the row, this is a no-op.
      */
     func substitute(symbol: Symbol, row: Row) {
-        if let coeff = cells[symbol] {
-            cells.removeValue(forKey: symbol)
+        if let coeff = cells.removeValue(forKey: symbol) {
             insert(other: row, coefficient: coeff)
         }
     }

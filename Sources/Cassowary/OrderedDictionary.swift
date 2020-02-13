@@ -94,12 +94,14 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
     }
     
     @inlinable
-    func removeValue(forKey key: KeyType) {
+    @discardableResult
+    func removeValue(forKey key: KeyType) -> ValueType? {
         _cachedOrderedEntries = nil
-        dictionary.removeValue(forKey: key)
         if let index = index(forKey: key) {
             keys.remove(at: index)
         }
+        
+        return dictionary.removeValue(forKey: key)
     }
     
     @inlinable

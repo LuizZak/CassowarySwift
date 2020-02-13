@@ -399,9 +399,9 @@ public final class Solver {
      */
     private static func chooseSubject(row: Row, tag: Tag) -> Symbol {
 
-        for cell in row.cells.orderedEntries {
-            if cell.key.symbolType == .external {
-                return cell.key
+        for key in row.cells.keys {
+            if key.symbolType == .external {
+                return key
             }
         }
 
