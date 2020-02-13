@@ -49,14 +49,13 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
             
             return _alias ?? _desc ?? ""
         }
-        
         set {
             _desc = newValue
         }
     }
     
-    func addingDebugDescription(_ desc: String) -> Self {
-        debugDescription = desc
+    func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
+        debugDescription = desc()
         return self
     }
     

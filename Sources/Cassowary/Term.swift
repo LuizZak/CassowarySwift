@@ -32,10 +32,20 @@
  */
 
 public final class Term: CustomStringConvertible, CassowaryDebugDescription {
-    var debugDescription: String = ""
+    internal var _debugDesc: String?
+    internal var debugDescription: String {
+        if let debugDesc = _debugDesc {
+            return debugDesc
+        }
+        let debugDesc = debugDescGenerator()
+        _debugDesc = debugDesc
+        return debugDesc
+    }
+    internal var debugDescGenerator: (() -> String) = { "" }
     
-    func addingDebugDescription(_ desc: String) -> Self {
-        debugDescription = desc
+    internal func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
+        _debugDesc = nil
+        debugDescGenerator = desc
         return self
     }
 

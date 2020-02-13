@@ -34,7 +34,7 @@
 import Foundation
 
 protocol CassowaryDebugDescription {
-    var debugDescription: String { get set }
+    var debugDescription: String { get }
     
-    func addingDebugDescription(_ desc: String) -> Self
+    func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self
 }

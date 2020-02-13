@@ -35,10 +35,20 @@
  This is a class that describes a constraint placed on a number of variables in the solver system.
  */
 public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
-    internal var debugDescription: String = ""
+    internal var _debugDesc: String?
+    internal var debugDescription: String {
+        if let debugDesc = _debugDesc {
+            return debugDesc
+        }
+        let debugDesc = debugDescGenerator()
+        _debugDesc = debugDesc
+        return debugDesc
+    }
+    internal var debugDescGenerator: (() -> String) = { "" }
     
-    internal func addingDebugDescription(_ desc: String) -> Self {
-        debugDescription = desc
+    internal func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
+        _debugDesc = nil
+        debugDescGenerator = desc
         return self
     }
     
