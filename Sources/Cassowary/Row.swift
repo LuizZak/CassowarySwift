@@ -103,8 +103,8 @@ public final class Row {
     func insert(other: Row, coefficient: Double) {
         constant += other.constant * coefficient
 
-        for s in other.cells.keys {
-            let coeff = other.cells[s]! * coefficient
+        for (s, value) in other.cells.dictionary {
+            let coeff = value * coefficient
 
             let temp = (cells[s] ?? 0.0) + coeff
             if temp.isNearZero {
@@ -138,15 +138,9 @@ public final class Row {
      */
     func reverseSign() {
         constant = -constant
-
-        let newCells = OrderedDictionary<Symbol, Double>()
-
-        for symbol in cells.keys {
-            let value = -cells[symbol]!
-            newCells[symbol] = value
+        cells = cells.mapValues { value in
+            -value
         }
-
-        cells = newCells
     }
 
     /**
@@ -163,15 +157,10 @@ public final class Row {
         let coeff = -1.0 / cells[symbol]!
         cells[symbol] = nil
         constant *= coeff
-
-        let newCells = OrderedDictionary<Symbol, Double>()
-
-        for s in cells.keys {
-            let value = cells[s]! * coeff
-            newCells[s] = value
+        
+        cells = cells.mapValues { value in
+            value * coeff
         }
-
-        cells = newCells
     }
 
     /**
@@ -212,7 +201,7 @@ public final class Row {
      */
     func substitute(symbol: Symbol, row: Row) {
         if let coeff = cells[symbol] {
-            cells[symbol] = nil
+            cells.removeValue(forKey: symbol)
             insert(other: row, coefficient: coeff)
         }
     }

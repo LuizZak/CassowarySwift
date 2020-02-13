@@ -34,16 +34,19 @@
 // Based on the implementation by Michael Kyriacou at
 // http://codeforcaffeine.com/programming/swift-3-ordered-dictionary/
 
-import Foundation
-
-public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleByDictionaryLiteral {
+internal final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleByDictionaryLiteral {
+    @usableFromInline
     var keys = [KeyType]()
-    private var dictionary = [KeyType: ValueType]()
+    @usableFromInline
+    var dictionary = [KeyType: ValueType]()
     
     public var count: Int { return keys.count }
     
-    private var _cachedOrderedEntries: [(key: KeyType, value: ValueType)]? = nil
-    public var orderedEntries: [(key: KeyType, value: ValueType)] {
+    @usableFromInline
+    internal var _cachedOrderedEntries: [(key: KeyType, value: ValueType)]? = nil
+    
+    @inlinable
+    var orderedEntries: [(key: KeyType, value: ValueType)] {
         if _cachedOrderedEntries == nil {
             _cachedOrderedEntries = keys.map {
                 (key: $0, value: dictionary[$0]!)
@@ -52,34 +55,46 @@ public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleB
         return _cachedOrderedEntries!
     }
     
-    public required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
+    required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
         for (k, v) in elements {
             self[k] = v
         }
     }
     
-    public subscript(key: KeyType) -> ValueType? {
+    @inlinable
+    subscript(key: KeyType) -> ValueType? {
         get { return self.dictionary[key] }
         set {
             if let v = newValue {
-                _cachedOrderedEntries = nil
-                
-                let oldVal = dictionary.updateValue(v, forKey: key)
-                if oldVal == nil {
-                    keys.append(key)
-                }
+                updateValue(v, forKey: key)
             } else {
                 removeValue(forKey: key)
             }
         }
     }
     
-    public init(_ dict: OrderedDictionary<KeyType, ValueType>) {
+    init(_ dict: OrderedDictionary<KeyType, ValueType>) {
         self.keys = dict.keys
         self.dictionary = dict.dictionary
     }
     
-    public func removeValue(forKey key: KeyType) {
+    private init(keys: [KeyType], dictionary: [KeyType: ValueType]) {
+        self.keys = keys
+        self.dictionary = dictionary
+    }
+    
+    @inlinable
+    func updateValue(_ value: ValueType, forKey key: KeyType) {
+        _cachedOrderedEntries = nil
+        
+        let oldVal = dictionary.updateValue(value, forKey: key)
+        if oldVal == nil {
+            keys.append(key)
+        }
+    }
+    
+    @inlinable
+    func removeValue(forKey key: KeyType) {
         _cachedOrderedEntries = nil
         dictionary.removeValue(forKey: key)
         if let index = index(forKey: key) {
@@ -87,24 +102,15 @@ public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleB
         }
     }
     
-    private func index(forKey key: KeyType) -> Int? {
+    @inlinable
+    func mapValues<T>(_ closure: (ValueType) -> T) -> OrderedDictionary<KeyType, T> {
+        let newValues = dictionary.mapValues(closure)
+        
+        return OrderedDictionary<KeyType, T>(keys: keys, dictionary: newValues)
+    }
+    
+    @usableFromInline
+    func index(forKey key: KeyType) -> Int? {
         return keys.firstIndex { $0 == key }
     }
-}
-
-extension OrderedDictionary: Sequence {
-    
-    public func makeIterator() -> AnyIterator<ValueType> {
-        var counter = 0
-        return AnyIterator {
-            guard counter < self.keys.count else {
-                return nil
-            }
-            
-            let next = self.dictionary[self.keys[counter]]
-            counter += 1
-            return next
-        }
-    }
-    
 }

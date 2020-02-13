@@ -584,16 +584,14 @@ public final class Solver {
 
         var ratio = Double.greatestFiniteMagnitude
 
-        for s in row.cells.keys {
-            if s.symbolType != .dummy {
-                let currentCell = row.cells[s]!
-                if currentCell > 0.0 {
-                    let coefficient = objective.coefficientFor(s)
-                    let r = coefficient / currentCell
-                    if r < ratio {
-                        ratio = r
-                        entering = s
-                    }
+        for s in row.cells.keys where s.symbolType != .dummy {
+            let currentCell = row.cells[s]!
+            if currentCell > 0.0 {
+                let coefficient = objective.coefficientFor(s)
+                let r = coefficient / currentCell
+                if r < ratio {
+                    ratio = r
+                    entering = s
                 }
             }
         }
@@ -673,12 +671,6 @@ public final class Solver {
      Test whether a row is composed of all dummy variables.
      */
     private static func allDummies(row: Row) -> Bool {
-        for cell in row.cells.orderedEntries {
-            if cell.key.symbolType != .dummy {
-                return false
-            }
-        }
-        return true
+        return row.cells.dictionary.keys.allSatisfy { $0.symbolType == .dummy }
     }
-
 }
