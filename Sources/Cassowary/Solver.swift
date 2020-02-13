@@ -50,10 +50,10 @@ public final class Solver {
         }
     }
 
-    private var constraintDict = OrderedDictionary<Constraint, Tag>()
+    private var constraintDict: [Constraint: Tag] = [:]
     private var rows = OrderedDictionary<Symbol, Row>()
-    private var variableSymbols = OrderedDictionary<Variable, Symbol>()
-    private var variableEditInfo = OrderedDictionary<Variable, EditInfo>()
+    private var variableSymbols: [Variable: Symbol] = [:]
+    private var variableEditInfo: [Variable: EditInfo] = [:]
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
@@ -76,7 +76,7 @@ public final class Solver {
 
         if subject.symbolType == .invalid && Solver.allDummies(row: row) {
             if !row.constant.isNearZero {
-                throw CassowaryError.unsatisfiableConstraint(constraint, constraintDict.keys)
+                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
             } else {
                 subject = tag.marker
             }
@@ -84,7 +84,7 @@ public final class Solver {
 
         if subject.symbolType == .invalid {
             if try !addWithArtificialVariable(row: row) {
-                throw CassowaryError.unsatisfiableConstraint(constraint, constraintDict.keys)
+                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
             }
         } else {
             row.solveFor(subject)
