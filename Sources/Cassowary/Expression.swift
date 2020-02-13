@@ -34,7 +34,7 @@
 public final class Expression: CustomStringConvertible, CassowaryDebugDescription {
     private weak var _owner: AnyObject?
     
-    private var _desc: String?
+    private var _descGen: () -> String? = { nil }
     var debugDescription: String {
         get {
             if _alias != nil && _owner != nil {
@@ -47,15 +47,15 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
                 return varIdent
             }
             
-            return _alias ?? _desc ?? ""
+            return _alias ?? _descGen() ?? ""
         }
         set {
-            _desc = newValue
+            _descGen = { newValue }
         }
     }
     
     func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
-        debugDescription = desc()
+        _descGen = desc
         return self
     }
     
