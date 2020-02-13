@@ -38,7 +38,7 @@ import Foundation
 
 public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleByDictionaryLiteral {
     var keys = [KeyType]()
-    fileprivate var dictionary = [KeyType: ValueType]()
+    private var dictionary = [KeyType: ValueType]()
     
     public var count: Int { return keys.count }
     
@@ -61,15 +61,15 @@ public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleB
     public subscript(key: KeyType) -> ValueType? {
         get { return self.dictionary[key] }
         set {
-            _cachedOrderedEntries = nil
             if let v = newValue {
-                let oldVal = self.dictionary.updateValue(v, forKey: key)
+                _cachedOrderedEntries = nil
+                
+                let oldVal = dictionary.updateValue(v, forKey: key)
                 if oldVal == nil {
-                    self.keys.append(key)
+                    keys.append(key)
                 }
             } else {
-                self.dictionary.removeValue(forKey: key)
-                keys = keys.filter { $0 != key }
+                removeValue(forKey: key)
             }
         }
     }
@@ -77,6 +77,18 @@ public final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleB
     public init(_ dict: OrderedDictionary<KeyType, ValueType>) {
         self.keys = dict.keys
         self.dictionary = dict.dictionary
+    }
+    
+    public func removeValue(forKey key: KeyType) {
+        _cachedOrderedEntries = nil
+        dictionary.removeValue(forKey: key)
+        if let index = index(forKey: key) {
+            keys.remove(at: index)
+        }
+    }
+    
+    private func index(forKey key: KeyType) -> Int? {
+        return keys.firstIndex { $0 == key }
     }
 }
 

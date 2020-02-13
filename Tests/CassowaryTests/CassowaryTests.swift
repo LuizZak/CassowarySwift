@@ -190,7 +190,7 @@ class CassowaryTests: XCTestCase {
             try solver.addConstraint(x == 10.0)
             try solver.addConstraint(x == 5.0)
             solver.updateVariables()
-        } catch CassowaryError.unsatisfiableConstraint(_) {
+        } catch CassowaryError.unsatisfiableConstraint {
             // An error is expected
             return
         } catch {
@@ -208,7 +208,7 @@ class CassowaryTests: XCTestCase {
             try solver.addConstraint(x >= 10)
             try solver.addConstraint(x <= 5)
             solver.updateVariables()
-        } catch CassowaryError.unsatisfiableConstraint(_) {
+        } catch CassowaryError.unsatisfiableConstraint {
             // An error is expected
             return
         } catch {

@@ -78,15 +78,12 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
     }
 
     private static func reduce(_ expr: Expression) -> Expression {
-        var vars = OrderedDictionary<Variable, Double>()
+        let vars = OrderedDictionary<Variable, Double>()
 
         for term in expr.terms {
-            var value = vars[term.variable]
-            if value == nil {
-                value = 0.0
-            }
-            value! += term.coefficient
-            vars[term.variable] = value!
+            var value = vars[term.variable] ?? 0.0
+            value += term.coefficient
+            vars[term.variable] = value
         }
 
         let reducedTerms = vars.keys.map {
@@ -108,7 +105,7 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
 extension Constraint: Equatable {
     /// :nodoc:
     public static func == (lhs: Constraint, rhs: Constraint) -> Bool {
-        return lhs.hashValue == rhs.hashValue
+        return lhs === rhs
     }
 
 }
@@ -116,11 +113,10 @@ extension Constraint: Equatable {
 // MARK: Hashable
 extension Constraint: Hashable {
     /// :nodoc:
-    public var hashValue: Int {
-        // Return a hash 'unique' to this object
-        return ObjectIdentifier(self).hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(self))
     }
-
+    
 }
 
 

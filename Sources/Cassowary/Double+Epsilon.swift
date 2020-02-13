@@ -34,11 +34,11 @@
 internal extension Double {
     static let epsilon: Double = 1.0e-8
     
-    internal var isNearZero: Bool {
+    var isNearZero: Bool {
         return self < 0.0 ? -self < .epsilon : self < .epsilon
     }
 
-    internal func isApproximately(value: Double) -> Bool {
+    func isApproximately(value: Double) -> Bool {
         return abs(self - value) < .epsilon
     }
 

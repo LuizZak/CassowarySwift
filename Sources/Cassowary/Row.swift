@@ -106,17 +106,11 @@ public final class Row {
         for s in other.cells.keys {
             let coeff = other.cells[s]! * coefficient
 
-            let value = cells[s]
-
-            if value == nil {
-                cells[s] = 0.0
-            }
-
-            let temp = cells[s]! + coeff
-            cells[s] = temp
-
+            let temp = (cells[s] ?? 0.0) + coeff
             if temp.isNearZero {
                 cells[s] = nil
+            } else {
+                cells[s] = temp
             }
         }
     }
@@ -145,7 +139,7 @@ public final class Row {
     func reverseSign() {
         constant = -constant
 
-        var newCells = OrderedDictionary<Symbol, Double>()
+        let newCells = OrderedDictionary<Symbol, Double>()
 
         for symbol in cells.keys {
             let value = -cells[symbol]!
@@ -170,7 +164,7 @@ public final class Row {
         cells[symbol] = nil
         constant *= coeff
 
-        var newCells = OrderedDictionary<Symbol, Double>()
+        let newCells = OrderedDictionary<Symbol, Double>()
 
         for s in cells.keys {
             let value = cells[s]! * coeff
@@ -229,7 +223,7 @@ public final class Row {
 extension Row: Equatable {
 
     public static func == (lhs: Row, rhs: Row) -> Bool {
-        return lhs.hashValue == rhs.hashValue
+        return lhs === rhs
     }
 
 }
@@ -237,9 +231,8 @@ extension Row: Equatable {
 // MARK: Hashable
 extension Row: Hashable {
 
-    public var hashValue: Int {
-        // Return a hash 'unique' to this object
-        return ObjectIdentifier(self).hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(self))
     }
 
 }

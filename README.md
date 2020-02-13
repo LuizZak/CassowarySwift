@@ -1,7 +1,5 @@
 # Cassowary Swift
 
-[![Build Status](https://travis-ci.org/tribalworldwidelondon/CassowarySwift.svg?branch=master)](https://travis-ci.org/tribalworldwidelondon/CassowarySwift)
-
 A Swift port of the Cassowary linear constraints solver. Tested on OS X, iOS and Linux.
 
 # Example usage
@@ -36,8 +34,7 @@ solver.updateVariables()
 
 ```
 
-# Documentation
-[Documentation can be found on CocoaDocs](http://cocoadocs.org/docsets/Cassowary)
-
 # Acknowledgements
 Cassowary Swift originally started as a direct port of [kiwi-java](https://github.com/alexbirkett/kiwi-java) by [Alex Birkett](https://github.com/alexbirkett)
+
+This repo is a fork of the original code from [Tribal Worldwide London](https://github.com/tribalworldwidelondon/CassowarySwift)

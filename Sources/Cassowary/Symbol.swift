@@ -55,7 +55,7 @@ public final class Symbol {
 extension Symbol: Equatable {
 
     public static func == (lhs: Symbol, rhs: Symbol) -> Bool {
-        return lhs.hashValue == rhs.hashValue
+        return lhs === rhs
     }
 
 }
@@ -63,9 +63,8 @@ extension Symbol: Equatable {
 // MARK: Hashable
 extension Symbol: Hashable {
 
-    public var hashValue: Int {
-        // Return a hash 'unique' to this object
-        return ObjectIdentifier(self).hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(self))
     }
 
 }
