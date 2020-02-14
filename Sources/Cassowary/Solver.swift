@@ -305,8 +305,8 @@ public final class Solver {
      Update the values of the external solver variables.
      */
     public func updateVariables() {
-        for variable in variableSymbols.keys {
-            if let row = rows[variableSymbols[variable]!] {
+        for (variable, value) in variableSymbols {
+            if let row = rows[value] {
                 variable.value = row.constant
             } else {
                 variable.value = 0
@@ -520,17 +520,11 @@ public final class Solver {
             }
 
             var leaving: Symbol?
-
-            for key in rows.keys {
-                if rows[key]! == entry {
-                    leaving = key
-                }
-            }
-
             var entryKey: Symbol?
 
             for key in rows.keys {
                 if rows[key]! == entry {
+                    leaving = key
                     entryKey = key
                 }
             }
