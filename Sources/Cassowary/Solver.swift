@@ -290,10 +290,9 @@ public final class Solver {
             }
         }
 
-        for s in rows.keys {
-            let currentRow = rows[s]!
-            let coefficient = currentRow.coefficientFor(info.tag.marker)
-            if coefficient != 0.0 && currentRow.add(delta * coefficient) < 0.0 && s.symbolType != .external {
+        for (s, row) in rows.orderedEntries {
+            let coefficient = row.coefficientFor(info.tag.marker)
+            if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
                 infeasibleRows.append(s)
             }
         }
