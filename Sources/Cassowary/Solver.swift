@@ -54,6 +54,7 @@ public final class Solver {
         }
     }
 
+    private var nextSymbolId: Int = 0
     private var constraintDict: [Constraint: Tag] = [:]
     private var rows = OrderedDictionary<Symbol, Row>()
     private var variableSymbols: [Variable: Symbol] = [:]
@@ -659,7 +660,8 @@ public final class Solver {
     }
     
     private func createSymbol(type: Symbol.SymbolType = .invalid) -> Symbol {
-        return Symbol(type)
+        nextSymbolId = nextSymbolId &+ 1
+        return Symbol(id: nextSymbolId, type)
     }
 
     /**
