@@ -58,7 +58,7 @@ public struct Symbol {
 extension Symbol: Equatable {
 
     public static func == (lhs: Symbol, rhs: Symbol) -> Bool {
-        return lhs.id == rhs.id && lhs.symbolType == rhs.symbolType
+        return lhs.id == rhs.id
     }
 
 }
