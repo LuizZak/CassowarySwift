@@ -34,8 +34,12 @@
 public final class Solver {
 
     private class Tag {
-        var marker: Symbol = Symbol()
+        var marker: Symbol
         var other: Symbol?
+        
+        init(marker: Symbol) {
+            self.marker = marker
+        }
     }
 
     private class EditInfo {
@@ -70,9 +74,9 @@ public final class Solver {
             throw CassowaryError.duplicateConstraint(constraint)
         }
 
-        let tag = Tag()
+        let tag = Tag(marker: createSymbol())
         let row = createRow(constraint: constraint, tag: tag)
-        var subject = Solver.chooseSubject(row: row, tag: tag)
+        var subject = chooseSubject(row: row, tag: tag)
 
         if subject.symbolType == .invalid && Solver.allDummies(row: row) {
             if !row.constant.isNearZero {
@@ -114,8 +118,8 @@ public final class Solver {
             }
 
             var leaving: Symbol?
-            for s in rows.keys {
-                if let r = rows[s], r == row {
+            for (s, r) in rows.orderedEntries {
+                if r == row {
                     leaving = s
                 }
             }
@@ -135,8 +139,8 @@ public final class Solver {
     private func removeConstraintEffects(constraint: Constraint, tag: Tag) {
         if tag.marker.symbolType == .error {
             removeMarkerEffects(marker: tag.marker, strength: constraint.strength)
-        } else if tag.other?.symbolType == .error {
-            removeMarkerEffects(marker: tag.other!, strength: constraint.strength)
+        } else if let other = tag.other, other.symbolType == .error {
+            removeMarkerEffects(marker: other, strength: constraint.strength)
         }
     }
 
@@ -157,8 +161,7 @@ public final class Solver {
         var second: Row?
         var third: Row?
 
-        for s in rows.keys {
-            let candidateRow = rows[s]!
+        for (s, candidateRow) in rows.orderedEntries {
             let c = candidateRow.coefficientFor(marker)
 
             if c == 0.0 {
@@ -270,20 +273,20 @@ public final class Solver {
         
         variableEditInfo[variable]!.constraint.suggestedValue = value
 
-        if row != nil {
-            if row!.add(-delta) < 0.0 {
+        if let row = row {
+            if row.add(-delta) < 0.0 {
                 infeasibleRows.append(info.tag.marker)
             }
             try dualOptimize()
             return
         }
 
-        if info.tag.other != nil {
-            row = rows[info.tag.other!]
+        if let otherTag = info.tag.other {
+            row = rows[otherTag]
 
-            if row != nil {
-                if row!.add(delta) < 0.0 {
-                    infeasibleRows.append(info.tag.other!)
+            if let row = row {
+                if row.add(delta) < 0.0 {
+                    infeasibleRows.append(otherTag)
                 }
                 try dualOptimize()
                 return
@@ -350,20 +353,20 @@ public final class Solver {
         switch constraint.op {
         case .greaterThanOrEqual, .lessThanOrEqual:
             let coeff = constraint.op == .lessThanOrEqual ? 1.0 : -1.0
-            let slack = Symbol(.slack)
+            let slack = createSymbol(type: .slack)
             tag.marker = slack
             row.insert(symbol: slack, coefficient: coeff)
 
             if constraint.strength < Strength.REQUIRED {
-                let error = Symbol(.error)
+                let error = createSymbol(type: .error)
                 tag.other = error
                 row.insert(symbol: error, coefficient: -coeff)
                 objective.insert(symbol: error, coefficient: constraint.strength)
             }
         case .equal:
             if constraint.strength < Strength.REQUIRED {
-                let errplus = Symbol(.error)
-                let errminus = Symbol(.error)
+                let errplus = createSymbol(type: .error)
+                let errminus = createSymbol(type: .error)
                 tag.marker = errplus
                 tag.other = errminus
                 row.insert(symbol: errplus, coefficient: -1.0) // v = eplus - eminus
@@ -371,7 +374,7 @@ public final class Solver {
                 objective.insert(symbol: errplus, coefficient: constraint.strength)
                 objective.insert(symbol: errminus, coefficient: constraint.strength)
             } else {
-                let dummy = Symbol(.dummy)
+                let dummy = createSymbol(type: .dummy)
                 tag.marker = dummy
                 row.insert(symbol: dummy)
             }
@@ -396,7 +399,7 @@ public final class Solver {
      2) A negative slack or error tag variable.
      If a subject cannot be found, an invalid symbol will be returned.
      */
-    private static func chooseSubject(row: Row, tag: Tag) -> Symbol {
+    private func chooseSubject(row: Row, tag: Tag) -> Symbol {
 
         for key in row.cells.keys {
             if key.symbolType == .external {
@@ -415,7 +418,7 @@ public final class Solver {
             }
         }
 
-        return Symbol()
+        return createSymbol()
     }
 
     /**
@@ -427,7 +430,7 @@ public final class Solver {
 
         // Create and add the artificial variable to the tableau
 
-        let art = Symbol(.slack)
+        let art = createSymbol(type: .slack)
         rows[art] = Row(row)
 
         artificial = Row(row)
@@ -470,8 +473,8 @@ public final class Solver {
         }
 
         // Remove the artificial variable from the tableau.
-        for rowEntry in rows.orderedEntries {
-            rowEntry.value.remove(symbol: art)
+        for (_, row) in rows.orderedEntries {
+            row.remove(symbol: art)
         }
 
         objective.remove(symbol: art)
@@ -496,8 +499,8 @@ public final class Solver {
 
         objective.substitute(symbol: symbol, row: row)
 
-        if artificial != nil {
-            artificial!.substitute(symbol: symbol, row: row)
+        if let artificial = artificial {
+            artificial.substitute(symbol: symbol, row: row)
         }
     }
 
@@ -509,7 +512,7 @@ public final class Solver {
      */
     private func optimize(objective: Row) throws {
         while true {
-            let entering = Solver.getEnteringSymbol(objective)
+            let entering = getEnteringSymbol(objective)
             if entering.symbolType == .invalid {
                 return
             }
@@ -521,14 +524,12 @@ public final class Solver {
             var leaving: Symbol?
             var entryKey: Symbol?
 
-            for key in rows.keys {
-                if rows[key]! == entry {
-                    leaving = key
-                    entryKey = key
-                }
+            for (key, row) in rows.orderedEntries where row == entry {
+                leaving = key
+                entryKey = key
             }
 
-            rows[entryKey!] = nil
+            rows.removeValue(forKey: entryKey!)
             entry.solveFor(leaving!, entering)
             substitute(symbol: entering, row: entry)
             rows[entering] = entry
@@ -562,30 +563,27 @@ public final class Solver {
      * the criteria, it means the objective function is at a minimum, and an
      * invalid symbol is returned.
      */
-    private static func getEnteringSymbol(_ objective: Row) -> Symbol {
+    private func getEnteringSymbol(_ objective: Row) -> Symbol {
         for cell in objective.cells.orderedEntries {
             if cell.key.symbolType != .dummy && cell.value < 0.0 {
                 return cell.key
             }
         }
 
-        return Symbol()
+        return createSymbol()
     }
 
     private func getDualEnteringSymbol(_ row: Row) -> Symbol {
-        var entering = Symbol()
+        var entering = createSymbol()
 
         var ratio = Double.greatestFiniteMagnitude
 
-        for s in row.cells.keys where s.symbolType != .dummy {
-            let currentCell = row.cells[s]!
-            if currentCell > 0.0 {
-                let coefficient = objective.coefficientFor(s)
-                let r = coefficient / currentCell
-                if r < ratio {
-                    ratio = r
-                    entering = s
-                }
+        for (s, currentCell) in row.cells.orderedEntries where s.symbolType != .dummy && currentCell > 0.0 {
+            let coefficient = objective.coefficientFor(s)
+            let r = coefficient / currentCell
+            if r < ratio {
+                ratio = r
+                entering = s
             }
         }
 
@@ -608,7 +606,7 @@ public final class Solver {
         }
 
         if symbol == nil {
-            symbol = Symbol()
+            symbol = createSymbol()
         }
 
         return symbol!
@@ -654,10 +652,14 @@ public final class Solver {
         if let symbol = variableSymbols[variable] {
             return symbol
         } else {
-            let symbol = Symbol(.external)
+            let symbol = createSymbol(type: .external)
             variableSymbols[variable] = symbol
             return symbol
         }
+    }
+    
+    private func createSymbol(type: Symbol.SymbolType = .invalid) -> Symbol {
+        return Symbol(type)
     }
 
     /**
