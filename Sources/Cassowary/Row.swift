@@ -130,7 +130,7 @@ public final class Row {
      Remove the given symbol from the row.
      */
     func remove(symbol: Symbol) {
-        cells[symbol] = nil
+        cells.removeValue(forKey: symbol)
     }
 
     /**

@@ -110,10 +110,7 @@ public final class Solver {
 
         constraintDict[constraint] = nil
         removeConstraintEffects(constraint: constraint, tag: tag)
-
-        if rows[tag.marker] != nil {
-            rows[tag.marker] = nil
-        } else {
+        if rows.removeValue(forKey: tag.marker) == nil {
             guard let row = getMarkerLeavingRow(marker: tag.marker) else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
@@ -125,13 +122,13 @@ public final class Solver {
                 }
             }
 
-            if leaving == nil {
+            if let leaving = leaving {
+                rows[leaving] = nil
+                row.solveFor(leaving, tag.marker)
+                substitute(symbol: tag.marker, row: row)
+            } else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
-
-            rows[leaving!] = nil
-            row.solveFor(leaving!, tag.marker)
-            substitute(symbol: tag.marker, row: row)
         }
 
         try optimize(objective: objective)
@@ -272,7 +269,7 @@ public final class Solver {
 
         var row = rows[info.tag.marker]
         
-        variableEditInfo[variable]!.constraint.suggestedValue = value
+        info.constraint.suggestedValue = value
 
         if let row = row {
             if row.add(-delta) < 0.0 {
@@ -538,9 +535,7 @@ public final class Solver {
     }
 
     private func dualOptimize() throws {
-        while !infeasibleRows.isEmpty {
-            let leaving = infeasibleRows.popLast()!
-
+        while let leaving = infeasibleRows.popLast() {
             if let row = rows[leaving], row.constant < 0.0 {
                 let entering = getDualEnteringSymbol(row)
                 if entering.symbolType == .invalid {
