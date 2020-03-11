@@ -59,12 +59,9 @@ public final class Solver {
     private var rows = OrderedDictionary<Symbol, Row>()
     private var variableSymbols: [Variable: Symbol] = [:]
     private var variableEditInfo: [Variable: EditInfo] = [:]
-    private var symbolRowsLookup: [Symbol: [(Symbol, Row)]]?
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
-    
-    public var cacheSuggestValueLookup: Bool = true
     
     // MARK: Initializers
     
@@ -77,8 +74,6 @@ public final class Solver {
         if constraintDict[constraint] != nil {
             throw CassowaryError.duplicateConstraint(constraint)
         }
-        
-        symbolRowsLookup = nil
 
         let tag = Tag(marker: createSymbol())
         let row = createRow(constraint: constraint, tag: tag)
@@ -112,8 +107,6 @@ public final class Solver {
         guard let tag = constraintDict[constraint] else {
             throw CassowaryError.unknownConstraint(constraint)
         }
-        
-        symbolRowsLookup = nil
 
         constraintDict[constraint] = nil
         removeConstraintEffects(constraint: constraint, tag: tag)
@@ -150,8 +143,6 @@ public final class Solver {
     }
 
     private func removeMarkerEffects(marker: Symbol, strength: Double) {
-        symbolRowsLookup = nil
-        
         if let row = rows[marker] {
             objective.insert(other: row, coefficient: -strength)
         } else {
@@ -238,8 +229,6 @@ public final class Solver {
         // TODO: Check if tag can be nil
         let info = EditInfo(constraint: constraint, tag: constraintDict[constraint]!, constant: 0.0)
         variableEditInfo[variable] = info
-        
-        symbolRowsLookup = nil
     }
     
     /**
@@ -258,7 +247,6 @@ public final class Solver {
         }
 
         variableEditInfo[variable] = nil
-        symbolRowsLookup = nil
     }
     
     /// Checks if the solver has an edit constraint for the provided variable.
@@ -303,49 +291,14 @@ public final class Solver {
             }
         }
 
-        if cacheSuggestValueLookup {
-            if let rows = getOrCreateSuggestValueLookup()[info.tag.marker] {
-                for (s, row) in rows {
-                    let coefficient = row.coefficientFor(info.tag.marker)
-                    if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
-                        infeasibleRows.append(s)
-                    }
-                }
-            }
-        } else {
-            for (s, row) in rows.orderedEntries {
-                let coefficient = row.coefficientFor(info.tag.marker)
-                if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
-                    infeasibleRows.append(s)
-                }
+        for (s, row) in rows.orderedEntries {
+            let coefficient = row.coefficientFor(info.tag.marker)
+            if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
+                infeasibleRows.append(s)
             }
         }
 
         try dualOptimize()
-    }
-    
-    private func getOrCreateSuggestValueLookup() -> [Symbol: [(Symbol, Row)]] {
-        if let lookup = symbolRowsLookup {
-            return lookup
-        }
-        
-        var lookup: [Symbol: [(Symbol, Row)]] = [:]
-        
-        for (_, varEditInfo) in variableEditInfo {
-            var matching: [(Symbol, Row)] = []
-            
-            for (symbol, row) in rows.orderedEntries {
-                if row.cells.dictionary[varEditInfo.tag.marker] != 0.0 {
-                    matching.append((symbol, row))
-                }
-            }
-            
-            lookup[varEditInfo.tag.marker] = matching
-        }
-        
-        symbolRowsLookup = lookup
-        
-        return lookup
     }
 
     /**
@@ -534,8 +487,6 @@ public final class Solver {
      in the tableau and the objective function with the given row.
      */
     private func substitute(symbol: Symbol, row: Row) {
-        symbolRowsLookup = nil
-        
         for rowEntry in rows.orderedEntries {
             rowEntry.value.substitute(symbol: symbol, row: row)
 
