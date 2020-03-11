@@ -184,11 +184,7 @@ public final class Row {
      If the symbol does not exist in the row, zero will be returned.
      */
     func coefficientFor(_ symbol: Symbol) -> Double {
-        if let coeff = cells[symbol] {
-            return coeff
-        } else {
-            return 0.0
-        }
+        return cells[symbol] ?? 0.0
     }
 
     /**
