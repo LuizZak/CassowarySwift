@@ -52,5 +52,36 @@ class VariableTests: XCTestCase {
         assertIsCloseTo(y, 8765.4321)
     }
     
+    func testVariableLessThanOrEqualOperator() {
+        let x = Variable("x")
+        
+        let constraint = x <= x
+        
+        XCTAssertEqual(constraint.op, .lessThanOrEqual)
+    }
+    
+    func testVariableLessThanOrEqualConstantOperator() {
+        let x = Variable("x")
+        
+        let constraint = x <= x + 10
+        
+        XCTAssertEqual(constraint.op, .lessThanOrEqual)
+    }
+    
+    func testVariableGreaterThanOrEqualOperator() {
+        let x = Variable("x")
+        
+        let constraint = x >= x
+        
+        XCTAssertEqual(constraint.op, .greaterThanOrEqual)
+    }
+    
+    func testVariableGreaterThanOrEqualConstantOperator() {
+        let x = Variable("x")
+        
+        let constraint = x >= x + 10
+        
+        XCTAssertEqual(constraint.op, .greaterThanOrEqual)
+    }
 }
 

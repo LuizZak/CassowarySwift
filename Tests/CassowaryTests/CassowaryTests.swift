@@ -357,4 +357,20 @@ class CassowaryTests: XCTestCase {
         XCTAssertNoThrow(try solver.suggestValue(variable: v, value: 1.0))
     }
 
+    func testGreaterThanOrEqualConstraint() throws {
+        let v1 = Variable("v1")
+        let v2 = Variable("v2")
+        let solver = Solver()
+        
+        try solver.addConstraint(v2 >= v1 + 10)
+        try solver.addEditVariable(variable: v1, strength: Strength.STRONG)
+        try solver.addEditVariable(variable: v2, strength: Strength.MEDIUM)
+        try solver.suggestValue(variable: v2, value: 0)
+        try solver.suggestValue(variable: v1, value: 10)
+        
+        solver.updateVariables()
+        
+        XCTAssertEqual(v1.value, 10.0)
+        XCTAssertEqual(v2.value, 20.0)
+    }
 }

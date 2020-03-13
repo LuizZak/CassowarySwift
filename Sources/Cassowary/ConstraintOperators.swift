@@ -396,7 +396,7 @@ public func <= (_ term: Term, _ constant: Double) -> Constraint {
 }
 
 public func >= (_ term: Term, _ expression: Expression) -> Constraint {
-    return (Expression(term: term) <= expression)
+    return (Expression(term: term) >= expression)
         .addingDebugDescription("\(term.debugDescription) >= \(expression.debugDescription)")
 }
 
