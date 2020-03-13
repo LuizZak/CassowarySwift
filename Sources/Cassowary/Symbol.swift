@@ -33,7 +33,6 @@
 
 public struct Symbol {
     public enum SymbolType {
-        case invalid
         case external
         case slack
         case error
@@ -42,11 +41,6 @@ public struct Symbol {
 
     let id: Int
     let symbolType: SymbolType
-
-    public init(id: Int) {
-        self.id = id
-        symbolType = .invalid
-    }
 
     public init(id: Int, _ symbolType: SymbolType) {
         self.id = id
