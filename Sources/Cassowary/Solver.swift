@@ -266,29 +266,26 @@ public final class Solver {
 
         let delta = value - info.constant
         info.constant = value
-
-        var row = rows[info.tag.marker]
-        
         info.constraint.suggestedValue = value
 
-        if let row = row {
+        if let row = rows[info.tag.marker] {
             if row.add(-delta) < 0.0 {
                 infeasibleRows.append(info.tag.marker)
             }
+            
             try dualOptimize()
+            
             return
         }
 
-        if let otherTag = info.tag.other {
-            row = rows[otherTag]
-
-            if let row = row {
-                if row.add(delta) < 0.0 {
-                    infeasibleRows.append(otherTag)
-                }
-                try dualOptimize()
-                return
+        if let otherTag = info.tag.other, let row = rows[otherTag] {
+            if row.add(delta) < 0.0 {
+                infeasibleRows.append(otherTag)
             }
+            
+            try dualOptimize()
+            
+            return
         }
 
         for (s, row) in rows.orderedEntries {
@@ -410,9 +407,9 @@ public final class Solver {
                 return tag.marker
             }
         }
-        if tag.other != nil && (tag.other!.symbolType == .slack || tag.other!.symbolType == .error) {
-            if row.coefficientFor(tag.other!) < 0.0 {
-                return tag.other!
+        if let other = tag.other, other.symbolType == .slack || other.symbolType == .error {
+            if row.coefficientFor(other) < 0.0 {
+                return other
             }
         }
 
