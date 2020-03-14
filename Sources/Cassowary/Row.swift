@@ -33,21 +33,21 @@
 
 import Foundation
 
-public final class Row {
+final class Row {
 
     private(set) var constant: Double
 
     private(set) var cells: OrderedDictionary<Symbol, Double> = [:]
 
-    public convenience init() {
+    convenience init() {
         self.init(constant: 0)
     }
 
-    public init(constant: Double) {
+    init(constant: Double) {
         self.constant = constant
     }
 
-    public init(_ other: Row) {
+    init(_ other: Row) {
         self.cells = OrderedDictionary<Symbol, Double>(other.cells)
         self.constant = other.constant
     }
@@ -209,18 +209,14 @@ public final class Row {
 
 // MARK: Equatable
 extension Row: Equatable {
-
-    public static func == (lhs: Row, rhs: Row) -> Bool {
+    static func == (lhs: Row, rhs: Row) -> Bool {
         return lhs === rhs
     }
-
 }
 
 // MARK: Hashable
 extension Row: Hashable {
-
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
-
 }

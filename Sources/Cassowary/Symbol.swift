@@ -31,8 +31,8 @@
 
  */
 
-public final class Symbol {
-    public enum SymbolType {
+final class Symbol {
+    enum SymbolType {
         case invalid
         case external
         case slack
@@ -42,29 +42,25 @@ public final class Symbol {
 
     let symbolType: SymbolType
 
-    public init() {
+    init() {
         symbolType = .invalid
     }
 
-    public init(_ symbolType: SymbolType) {
+    init(_ symbolType: SymbolType) {
         self.symbolType = symbolType
     }
 }
 
 // MARK: Equatable
 extension Symbol: Equatable {
-
-    public static func == (lhs: Symbol, rhs: Symbol) -> Bool {
+    static func == (lhs: Symbol, rhs: Symbol) -> Bool {
         return lhs === rhs
     }
-
 }
 
 // MARK: Hashable
 extension Symbol: Hashable {
-
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
-
 }
