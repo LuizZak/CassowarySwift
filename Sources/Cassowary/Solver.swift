@@ -555,8 +555,8 @@ public final class Solver {
      * <p/>
      * This method will return first symbol in the objective function which
      * is non-dummy and has a coefficient less than zero. If no symbol meets
-     * the criteria, it means the objective function is at a minimum, and an
-     * invalid symbol is returned.
+     * the criteria, it means the objective function is at a minimum, and `nil`
+     * is returned.
      */
     private func getEnteringSymbol(_ objective: Row) -> Symbol? {
         for cell in objective.cells.orderedEntries {
@@ -589,7 +589,7 @@ public final class Solver {
     /**
      Get the first Slack or Error symbol in the row.
 
-     sIf no such symbol is present, and Invalid symbol will be returned.
+     sIf no such symbol is present, `nil` will be returned.
      */
     private func anyPivotableSymbol(_ row: Row) -> Symbol? {
         var symbol: Symbol?
@@ -610,7 +610,7 @@ public final class Solver {
 
      This method will return an iterator to the row in the row map
      which holds the exit symbol. If no appropriate exit symbol is
-     found, the end() iterator will be returned. This indicates that
+     found, `nil` will be returned. This indicates that
      the objective function is unbounded.
      */
     private func getLeavingRow(_ entering: Symbol) -> Row? {

@@ -85,19 +85,20 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
     
     @inlinable
     func updateValue(_ value: ValueType, forKey key: KeyType) {
-        _cachedOrderedEntries = nil
-        
         let oldVal = dictionary.updateValue(value, forKey: key)
         if oldVal == nil {
             keys.append(key)
+            _cachedOrderedEntries?.append((key, value))
+        } else {
+            _cachedOrderedEntries = nil
         }
     }
     
     @inlinable
     @discardableResult
     func removeValue(forKey key: KeyType) -> ValueType? {
-        _cachedOrderedEntries = nil
         if let index = index(forKey: key) {
+            _cachedOrderedEntries?.remove(at: index)
             keys.remove(at: index)
         }
         
