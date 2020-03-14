@@ -31,22 +31,19 @@
 
  */
 
-final class Symbol {
+struct Symbol {
     enum SymbolType {
-        case invalid
         case external
         case slack
         case error
         case dummy
     }
 
+    let id: Int
     let symbolType: SymbolType
 
-    init() {
-        symbolType = .invalid
-    }
-
-    init(_ symbolType: SymbolType) {
+    init(id: Int, _ symbolType: SymbolType) {
+        self.id = id
         self.symbolType = symbolType
     }
 }
@@ -54,13 +51,13 @@ final class Symbol {
 // MARK: Equatable
 extension Symbol: Equatable {
     static func == (lhs: Symbol, rhs: Symbol) -> Bool {
-        return lhs === rhs
+        return lhs.id == rhs.id
     }
 }
 
 // MARK: Hashable
 extension Symbol: Hashable {
     func hash(into hasher: inout Hasher) {
-        hasher.combine(ObjectIdentifier(self))
+        hasher.combine(id)
     }
 }

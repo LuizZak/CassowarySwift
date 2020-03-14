@@ -33,8 +33,8 @@
 
 public final class Solver {
 
-    private class Tag {
-        var marker: Symbol = Symbol()
+    private struct Tag {
+        var marker: Symbol
         var other: Symbol?
     }
 
@@ -50,6 +50,7 @@ public final class Solver {
         }
     }
 
+    private var nextSymbolId: Int = 0
     private var constraintDict: [Constraint: Tag] = [:]
     private var rows = OrderedDictionary<Symbol, Row>()
     private var variableSymbols: [Variable: Symbol] = [:]
@@ -70,23 +71,9 @@ public final class Solver {
             throw CassowaryError.duplicateConstraint(constraint)
         }
 
-        let tag = Tag()
-        let row = createRow(constraint: constraint, tag: tag)
-        var subject = Solver.chooseSubject(row: row, tag: tag)
-
-        if subject.symbolType == .invalid && Solver.allDummies(row: row) {
-            if !row.constant.isNearZero {
-                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
-            } else {
-                subject = tag.marker
-            }
-        }
-
-        if subject.symbolType == .invalid {
-            if try !addWithArtificialVariable(row: row) {
-                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
-            }
-        } else {
+        let (row, tag) = createRow(constraint: constraint)
+        
+        if let subject = try getSubject(constraint: constraint, row: row, tag: tag) {
             row.solveFor(subject)
             substitute(symbol: subject, row: row)
             rows[subject] = row
@@ -97,6 +84,26 @@ public final class Solver {
         try optimize(objective: objective)
     }
     
+    private func getSubject(constraint: Constraint, row: Row, tag: Tag) throws -> Symbol? {
+        if let subject = chooseSubject(row: row, tag: tag) {
+            return subject
+        }
+        
+        if Solver.allDummies(row: row) {
+            if !row.constant.isNearZero {
+                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
+            } else {
+                return tag.marker
+            }
+        }
+        
+        if try !addWithArtificialVariable(row: row) {
+            throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
+        }
+        
+        return nil
+    }
+    
     /// Remove a constraint from the solver
     public func removeConstraint(_ constraint: Constraint) throws {
         guard let tag = constraintDict[constraint] else {
@@ -105,28 +112,25 @@ public final class Solver {
 
         constraintDict[constraint] = nil
         removeConstraintEffects(constraint: constraint, tag: tag)
-
-        if rows[tag.marker] != nil {
-            rows[tag.marker] = nil
-        } else {
+        if rows.removeValue(forKey: tag.marker) == nil {
             guard let row = getMarkerLeavingRow(marker: tag.marker) else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
 
             var leaving: Symbol?
-            for s in rows.keys {
-                if let r = rows[s], r == row {
+            for (s, r) in rows.orderedEntries {
+                if r == row {
                     leaving = s
                 }
             }
 
-            if leaving == nil {
+            if let leaving = leaving {
+                rows[leaving] = nil
+                row.solveFor(leaving, tag.marker)
+                substitute(symbol: tag.marker, row: row)
+            } else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
-
-            rows[leaving!] = nil
-            row.solveFor(leaving!, tag.marker)
-            substitute(symbol: tag.marker, row: row)
         }
 
         try optimize(objective: objective)
@@ -135,8 +139,8 @@ public final class Solver {
     private func removeConstraintEffects(constraint: Constraint, tag: Tag) {
         if tag.marker.symbolType == .error {
             removeMarkerEffects(marker: tag.marker, strength: constraint.strength)
-        } else if tag.other?.symbolType == .error {
-            removeMarkerEffects(marker: tag.other!, strength: constraint.strength)
+        } else if let other = tag.other, other.symbolType == .error {
+            removeMarkerEffects(marker: other, strength: constraint.strength)
         }
     }
 
@@ -157,8 +161,7 @@ public final class Solver {
         var second: Row?
         var third: Row?
 
-        for s in rows.keys {
-            let candidateRow = rows[s]!
+        for (s, candidateRow) in rows.orderedEntries {
             let c = candidateRow.coefficientFor(marker)
 
             if c == 0.0 {
@@ -265,29 +268,26 @@ public final class Solver {
 
         let delta = value - info.constant
         info.constant = value
+        info.constraint.suggestedValue = value
 
-        var row = rows[info.tag.marker]
-        
-        variableEditInfo[variable]!.constraint.suggestedValue = value
-
-        if row != nil {
-            if row!.add(-delta) < 0.0 {
+        if let row = rows[info.tag.marker] {
+            if row.add(-delta) < 0.0 {
                 infeasibleRows.append(info.tag.marker)
             }
+            
             try dualOptimize()
+            
             return
         }
 
-        if info.tag.other != nil {
-            row = rows[info.tag.other!]
-
-            if row != nil {
-                if row!.add(delta) < 0.0 {
-                    infeasibleRows.append(info.tag.other!)
-                }
-                try dualOptimize()
-                return
+        if let otherTag = info.tag.other, let row = rows[otherTag] {
+            if row.add(delta) < 0.0 {
+                infeasibleRows.append(otherTag)
             }
+            
+            try dualOptimize()
+            
+            return
         }
 
         for (s, row) in rows.orderedEntries {
@@ -331,9 +331,12 @@ public final class Solver {
      * The tag will be updated with the marker and error symbols to use
      * for tracking the movement of the constraint in the tableau.
      */
-    private func createRow(constraint: Constraint, tag: Tag) -> Row {
+    private func createRow(constraint: Constraint) -> (Row, Tag) {
         let expression = constraint.expression
         let row = Row(constant: expression.constant)
+        
+        var marker: Symbol
+        var other: Symbol?
 
         for term in expression.terms {
             if !term.coefficient.isNearZero {
@@ -350,29 +353,29 @@ public final class Solver {
         switch constraint.op {
         case .greaterThanOrEqual, .lessThanOrEqual:
             let coeff = constraint.op == .lessThanOrEqual ? 1.0 : -1.0
-            let slack = Symbol(.slack)
-            tag.marker = slack
+            let slack = createSymbol(type: .slack)
+            marker = slack
             row.insert(symbol: slack, coefficient: coeff)
 
             if constraint.strength < Strength.REQUIRED {
-                let error = Symbol(.error)
-                tag.other = error
+                let error = createSymbol(type: .error)
+                other = error
                 row.insert(symbol: error, coefficient: -coeff)
                 objective.insert(symbol: error, coefficient: constraint.strength)
             }
         case .equal:
             if constraint.strength < Strength.REQUIRED {
-                let errplus = Symbol(.error)
-                let errminus = Symbol(.error)
-                tag.marker = errplus
-                tag.other = errminus
+                let errplus = createSymbol(type: .error)
+                let errminus = createSymbol(type: .error)
+                marker = errplus
+                other = errminus
                 row.insert(symbol: errplus, coefficient: -1.0) // v = eplus - eminus
                 row.insert(symbol: errminus, coefficient: 1.0) // v - eplus + eminus = 0
                 objective.insert(symbol: errplus, coefficient: constraint.strength)
                 objective.insert(symbol: errminus, coefficient: constraint.strength)
             } else {
-                let dummy = Symbol(.dummy)
-                tag.marker = dummy
+                let dummy = createSymbol(type: .dummy)
+                marker = dummy
                 row.insert(symbol: dummy)
             }
         }
@@ -382,7 +385,7 @@ public final class Solver {
             row.reverseSign()
         }
 
-        return row
+        return (row, Tag(marker: marker, other: other))
     }
 
     /**
@@ -396,7 +399,7 @@ public final class Solver {
      2) A negative slack or error tag variable.
      If a subject cannot be found, an invalid symbol will be returned.
      */
-    private static func chooseSubject(row: Row, tag: Tag) -> Symbol {
+    private func chooseSubject(row: Row, tag: Tag) -> Symbol? {
 
         for key in row.cells.keys {
             if key.symbolType == .external {
@@ -409,13 +412,13 @@ public final class Solver {
                 return tag.marker
             }
         }
-        if tag.other != nil && (tag.other!.symbolType == .slack || tag.other!.symbolType == .error) {
-            if row.coefficientFor(tag.other!) < 0.0 {
-                return tag.other!
+        if let other = tag.other, other.symbolType == .slack || other.symbolType == .error {
+            if row.coefficientFor(other) < 0.0 {
+                return other
             }
         }
 
-        return Symbol()
+        return nil
     }
 
     /**
@@ -427,7 +430,7 @@ public final class Solver {
 
         // Create and add the artificial variable to the tableau
 
-        let art = Symbol(.slack)
+        let art = createSymbol(type: .slack)
         rows[art] = Row(row)
 
         artificial = Row(row)
@@ -443,8 +446,8 @@ public final class Solver {
 
         if let rowptr = rows[art] {
             var deleteQueue = [Symbol]()
-            for s in rows.keys {
-                if rows[s]! == rowptr {
+            for (s, row) in rows.orderedEntries {
+                if row == rowptr {
                     deleteQueue.append(s)
                 }
             }
@@ -459,8 +462,7 @@ public final class Solver {
                 return success
             }
 
-            let entering = anyPivotableSymbol(rowptr)
-            if entering.symbolType == .invalid {
+            guard let entering = anyPivotableSymbol(rowptr) else {
                 return false // unsatisfiable (will this ever happen?)
             }
 
@@ -470,8 +472,8 @@ public final class Solver {
         }
 
         // Remove the artificial variable from the tableau.
-        for rowEntry in rows.orderedEntries {
-            rowEntry.value.remove(symbol: art)
+        for (_, row) in rows.orderedEntries {
+            row.remove(symbol: art)
         }
 
         objective.remove(symbol: art)
@@ -496,8 +498,8 @@ public final class Solver {
 
         objective.substitute(symbol: symbol, row: row)
 
-        if artificial != nil {
-            artificial!.substitute(symbol: symbol, row: row)
+        if let artificial = artificial {
+            artificial.substitute(symbol: symbol, row: row)
         }
     }
 
@@ -509,8 +511,7 @@ public final class Solver {
      */
     private func optimize(objective: Row) throws {
         while true {
-            let entering = Solver.getEnteringSymbol(objective)
-            if entering.symbolType == .invalid {
+            guard let entering = getEnteringSymbol(objective) else {
                 return
             }
 
@@ -521,14 +522,12 @@ public final class Solver {
             var leaving: Symbol?
             var entryKey: Symbol?
 
-            for key in rows.keys {
-                if rows[key]! == entry {
-                    leaving = key
-                    entryKey = key
-                }
+            for (key, row) in rows.orderedEntries where row == entry {
+                leaving = key
+                entryKey = key
             }
 
-            rows[entryKey!] = nil
+            rows.removeValue(forKey: entryKey!)
             entry.solveFor(leaving!, entering)
             substitute(symbol: entering, row: entry)
             rows[entering] = entry
@@ -536,12 +535,9 @@ public final class Solver {
     }
 
     private func dualOptimize() throws {
-        while !infeasibleRows.isEmpty {
-            let leaving = infeasibleRows.popLast()!
-
+        while let leaving = infeasibleRows.popLast() {
             if let row = rows[leaving], row.constant < 0.0 {
-                let entering = getDualEnteringSymbol(row)
-                if entering.symbolType == .invalid {
+                guard let entering = getDualEnteringSymbol(row) else {
                     throw CassowaryError.internalSolver("Internal solver error")
                 }
 
@@ -562,30 +558,27 @@ public final class Solver {
      * the criteria, it means the objective function is at a minimum, and an
      * invalid symbol is returned.
      */
-    private static func getEnteringSymbol(_ objective: Row) -> Symbol {
+    private func getEnteringSymbol(_ objective: Row) -> Symbol? {
         for cell in objective.cells.orderedEntries {
             if cell.key.symbolType != .dummy && cell.value < 0.0 {
                 return cell.key
             }
         }
 
-        return Symbol()
+        return nil
     }
 
-    private func getDualEnteringSymbol(_ row: Row) -> Symbol {
-        var entering = Symbol()
+    private func getDualEnteringSymbol(_ row: Row) -> Symbol? {
+        var entering: Symbol?
 
         var ratio = Double.greatestFiniteMagnitude
 
-        for s in row.cells.keys where s.symbolType != .dummy {
-            let currentCell = row.cells[s]!
-            if currentCell > 0.0 {
-                let coefficient = objective.coefficientFor(s)
-                let r = coefficient / currentCell
-                if r < ratio {
-                    ratio = r
-                    entering = s
-                }
+        for (s, currentCell) in row.cells.orderedEntries where s.symbolType != .dummy && currentCell > 0.0 {
+            let coefficient = objective.coefficientFor(s)
+            let r = coefficient / currentCell
+            if r < ratio {
+                ratio = r
+                entering = s
             }
         }
 
@@ -598,7 +591,7 @@ public final class Solver {
 
      sIf no such symbol is present, and Invalid symbol will be returned.
      */
-    private func anyPivotableSymbol(_ row: Row) -> Symbol {
+    private func anyPivotableSymbol(_ row: Row) -> Symbol? {
         var symbol: Symbol?
 
         for entry in row.cells.orderedEntries {
@@ -607,11 +600,7 @@ public final class Solver {
             }
         }
 
-        if symbol == nil {
-            symbol = Symbol()
-        }
-
-        return symbol!
+        return symbol
     }
 
     /**
@@ -654,10 +643,15 @@ public final class Solver {
         if let symbol = variableSymbols[variable] {
             return symbol
         } else {
-            let symbol = Symbol(.external)
+            let symbol = createSymbol(type: .external)
             variableSymbols[variable] = symbol
             return symbol
         }
+    }
+    
+    private func createSymbol(type: Symbol.SymbolType) -> Symbol {
+        nextSymbolId = nextSymbolId &+ 1
+        return Symbol(id: nextSymbolId, type)
     }
 
     /**
