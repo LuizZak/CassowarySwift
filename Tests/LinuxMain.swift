@@ -2,7 +2,7 @@
 // DO NOT EDIT
 
 import XCTest
-@testable import CassowaryTests
+@testable import CassowarySwiftTests
 
 extension CassowaryTests {
     static var allTests = [

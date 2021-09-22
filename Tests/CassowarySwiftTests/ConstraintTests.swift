@@ -32,56 +32,31 @@
  */
 
 import XCTest
-@testable import Cassowary
+@testable import CassowarySwift
 
-class VariableTests: XCTestCase {
+class ConstraintTests: XCTestCase {
     
-    func testConstructors() {
-        let x = Variable("x")
+    func testInitConstraint() {
         
-        XCTAssertEqual(x.name, "x")
-        assertIsCloseTo(x, 0.0)
+        let e1 = Expression(constant: 1.0)
+        let c1 = Constraint(expr: e1, op: .equal)
         
-        XCTAssertEqual(x.description, "x")
+        XCTAssertEqual(c1.op, .equal)
+        XCTAssertEqual(c1.description, "Constraint<(1.0) | strength: REQUIRED | operator: equal>")
         
-        let y = Variable(1234.5678)
-        assertIsCloseTo(y, 1234.5678)
-        XCTAssertEqual(y.name, "1234.5678")
-        
-        y.value = 8765.4321
-        assertIsCloseTo(y, 8765.4321)
+        // Creating a constraint from another constraint
+        let c2 = Constraint(other: c1, strength: Strength.WEAK)
+        XCTAssertEqual(c2.description, "Constraint<(1.0) | strength: WEAK | operator: equal>")
     }
     
-    func testVariableLessThanOrEqualOperator() {
-        let x = Variable("x")
+    func testEditConstraint() {
+        let e1 = Expression(constant: 1.0)
+        var c1 = EditConstraint(expr: e1, op: .equal)
+        c1.suggestedValue = 2.0
+        XCTAssertEqual(c1.description, "EditConstraint<1.0 == 2.0 | Strength: REQUIRED>")
         
-        let constraint = x <= x
-        
-        XCTAssertEqual(constraint.op, .lessThanOrEqual)
+        c1 = c1.addingDebugDescription("Test")
+        XCTAssertEqual(c1.description, "EditConstraint<Test | Strength: REQUIRED>")
     }
     
-    func testVariableLessThanOrEqualConstantOperator() {
-        let x = Variable("x")
-        
-        let constraint = x <= x + 10
-        
-        XCTAssertEqual(constraint.op, .lessThanOrEqual)
-    }
-    
-    func testVariableGreaterThanOrEqualOperator() {
-        let x = Variable("x")
-        
-        let constraint = x >= x
-        
-        XCTAssertEqual(constraint.op, .greaterThanOrEqual)
-    }
-    
-    func testVariableGreaterThanOrEqualConstantOperator() {
-        let x = Variable("x")
-        
-        let constraint = x >= x + 10
-        
-        XCTAssertEqual(constraint.op, .greaterThanOrEqual)
-    }
 }
-

@@ -32,7 +32,7 @@
  */
 
 import XCTest
-@testable import Cassowary
+@testable import CassowarySwift
 
 class CassowaryTests: XCTestCase {
 

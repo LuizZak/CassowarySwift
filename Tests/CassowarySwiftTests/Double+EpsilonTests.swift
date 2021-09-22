@@ -32,20 +32,20 @@
  */
 
 import XCTest
-@testable import Cassowary
+@testable import CassowarySwift
 
-func assertIsCloseTo(_ v1: Variable, _ v2: Variable, file: StaticString = #file, line: UInt = #line) {
-    XCTAssertEqual(v1.value, v2.value, accuracy: Double.epsilon, file: file, line: line)
-}
+class DoubleEpsilonTests: XCTestCase {
 
-func assertIsCloseTo(_ v1: Variable, _ v2: Double, file: StaticString = #file, line: UInt = #line) {
-    XCTAssertEqual(v1.value, v2, accuracy: Double.epsilon, file: file, line: line)
-}
+    func testIsNearZero() {
+        XCTAssertTrue(0.000000001.isNearZero)
+        XCTAssertFalse(1.0.isNearZero)
+    }
 
-func assertIsCloseTo(_ v1: Double, _ v2: Variable, file: StaticString = #file, line: UInt = #line) {
-    XCTAssertEqual(v1, v2.value, accuracy: Double.epsilon, file: file, line: line)
-}
+    func testIsApproximately() {
+        XCTAssertTrue(0.000000001.isApproximately(value: 0.0000000002))
+        XCTAssertTrue(0.0.isApproximately(value: 0.0000000001))
+        XCTAssertTrue(0.000000001.isApproximately(value: 0.0))
+        XCTAssertFalse(1.0.isApproximately(value: 2.0))
+    }
 
-func assertIsCloseTo(_ v1: Double, _ v2: Double, file: StaticString = #file, line: UInt = #line) {
-    XCTAssertEqual(v1, v2, accuracy: Double.epsilon, file: file, line: line)
 }

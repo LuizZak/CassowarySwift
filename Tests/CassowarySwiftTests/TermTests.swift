@@ -32,31 +32,54 @@
  */
 
 import XCTest
-@testable import Cassowary
+@testable import CassowarySwift
 
-class ConstraintTests: XCTestCase {
+class TermTests: XCTestCase {
     
-    func testInitConstraint() {
+    func testConstructors() {
+        let term = Term(variable: Variable("x"))
         
-        let e1 = Expression(constant: 1.0)
-        let c1 = Constraint(expr: e1, op: .equal)
+        XCTAssertEqual(term.variable.name, "x")
+        assertIsCloseTo(term.coefficient, 1.0)
         
-        XCTAssertEqual(c1.op, .equal)
-        XCTAssertEqual(c1.description, "Constraint<(1.0) | strength: REQUIRED | operator: equal>")
-        
-        // Creating a constraint from another constraint
-        let c2 = Constraint(other: c1, strength: Strength.WEAK)
-        XCTAssertEqual(c2.description, "Constraint<(1.0) | strength: WEAK | operator: equal>")
+        let term1 = Term(variable: Variable("y"), coefficient: 1234.5678)
+        XCTAssertEqual(term1.variable.name, "y")
+        assertIsCloseTo(term1.coefficient, 1234.5678)
     }
     
-    func testEditConstraint() {
-        let e1 = Expression(constant: 1.0)
-        var c1 = EditConstraint(expr: e1, op: .equal)
-        c1.suggestedValue = 2.0
-        XCTAssertEqual(c1.description, "EditConstraint<1.0 == 2.0 | Strength: REQUIRED>")
+    func testUpdateVariable() {
+        let x = Variable("x")
+        let y = Variable("y")
         
-        c1 = c1.addingDebugDescription("Test")
-        XCTAssertEqual(c1.description, "EditConstraint<Test | Strength: REQUIRED>")
+        let term = Term(variable: x)
+        XCTAssertEqual(term.variable, x)
+        
+        term.variable = y
+        XCTAssertEqual(term.variable, y)
     }
     
+    func testUpdateCoefficient() {
+        let term = Term(variable: Variable("x"))
+        term.coefficient = 1234.5678
+        
+        assertIsCloseTo(term.coefficient, 1234.5678)
+    }
+    
+    func testValue() {
+        let x = Variable("x")
+        x.value = 5
+        
+        let term = Term(variable: x, coefficient: 2.0)
+        assertIsCloseTo(term.value, 10.0)
+    }
+    
+    func testDescription() {
+        let term = Term(variable: Variable("x"))
+        XCTAssertEqual(term.description, "x")
+        
+        term.coefficient = 2.0
+        XCTAssertEqual(term.description, "x * 2.0")
+    }
 }
+
+
