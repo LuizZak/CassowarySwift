@@ -55,12 +55,6 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
         return _cachedOrderedEntries!
     }
     
-    required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
-        for (k, v) in elements {
-            self[k] = v
-        }
-    }
-    
     @inlinable
     subscript(key: KeyType) -> ValueType? {
         get { return self.dictionary[key] }
@@ -73,9 +67,16 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
         }
     }
     
+    required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
+        for (k, v) in elements {
+            self[k] = v
+        }
+    }
+    
     init(_ dict: OrderedDictionary<KeyType, ValueType>) {
         self.keys = dict.keys
         self.dictionary = dict.dictionary
+        self._cachedOrderedEntries = dict._cachedOrderedEntries
     }
     
     private init(keys: [KeyType], dictionary: [KeyType: ValueType]) {
@@ -97,12 +98,16 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
     @inlinable
     @discardableResult
     func removeValue(forKey key: KeyType) -> ValueType? {
+        guard let removed = dictionary.removeValue(forKey: key) else {
+            return nil
+        }
+        
         if let index = index(forKey: key) {
             _cachedOrderedEntries?.remove(at: index)
             keys.remove(at: index)
         }
         
-        return dictionary.removeValue(forKey: key)
+        return removed
     }
     
     @inlinable
