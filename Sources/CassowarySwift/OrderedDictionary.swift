@@ -1,23 +1,23 @@
 /*
- 
+
  Copyright (c) 2017, Tribal Worldwide London
  Copyright (c) 2015, Alex Birkett
  All rights reserved.
- 
+
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
- 
+
  * Redistributions of source code must retain the above copyright notice, this
  list of conditions and the following disclaimer.
- 
+
  * Redistributions in binary form must reproduce the above copyright notice,
  this list of conditions and the following disclaimer in the documentation
  and/or other materials provided with the distribution.
- 
+
  * Neither the name of kiwi-java nor the names of its
  contributors may be used to endorse or promote products derived from
  this software without specific prior written permission.
- 
+
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -28,7 +28,7 @@
  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
+
  */
 
 // Based on the implementation by Michael Kyriacou at
@@ -36,15 +36,15 @@
 
 internal final class OrderedDictionary<KeyType: Hashable, ValueType>: ExpressibleByDictionaryLiteral {
     @usableFromInline
-    var keys = [KeyType]()
+    private(set) var keys = [KeyType]()
     @usableFromInline
-    var dictionary = [KeyType: ValueType]()
-    
-    public var count: Int { return keys.count }
-    
+    private(set) var dictionary = [KeyType: ValueType]()
+
+    var count: Int { return keys.count }
+
     @usableFromInline
     internal var _cachedOrderedEntries: [(key: KeyType, value: ValueType)]? = nil
-    
+
     @inlinable
     var orderedEntries: [(key: KeyType, value: ValueType)] {
         if _cachedOrderedEntries == nil {
@@ -54,7 +54,7 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
         }
         return _cachedOrderedEntries!
     }
-    
+
     @inlinable
     subscript(key: KeyType) -> ValueType? {
         get { return self.dictionary[key] }
@@ -66,24 +66,24 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
             }
         }
     }
-    
+
     required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
         for (k, v) in elements {
             self[k] = v
         }
     }
-    
+
     init(_ dict: OrderedDictionary<KeyType, ValueType>) {
         self.keys = dict.keys
         self.dictionary = dict.dictionary
         self._cachedOrderedEntries = dict._cachedOrderedEntries
     }
-    
+
     private init(keys: [KeyType], dictionary: [KeyType: ValueType]) {
         self.keys = keys
         self.dictionary = dictionary
     }
-    
+
     @inlinable
     func updateValue(_ value: ValueType, forKey key: KeyType) {
         let oldVal = dictionary.updateValue(value, forKey: key)
@@ -94,29 +94,29 @@ internal final class OrderedDictionary<KeyType: Hashable, ValueType>: Expressibl
             _cachedOrderedEntries = nil
         }
     }
-    
+
     @inlinable
     @discardableResult
     func removeValue(forKey key: KeyType) -> ValueType? {
         guard let removed = dictionary.removeValue(forKey: key) else {
             return nil
         }
-        
+
         if let index = index(forKey: key) {
             _cachedOrderedEntries?.remove(at: index)
             keys.remove(at: index)
         }
-        
+
         return removed
     }
-    
+
     @inlinable
     func mapValues<T>(_ closure: (ValueType) -> T) -> OrderedDictionary<KeyType, T> {
         let newValues = dictionary.mapValues(closure)
-        
+
         return OrderedDictionary<KeyType, T>(keys: keys, dictionary: newValues)
     }
-    
+
     @usableFromInline
     func index(forKey key: KeyType) -> Int? {
         return keys.firstIndex { $0 == key }

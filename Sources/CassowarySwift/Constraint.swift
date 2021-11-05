@@ -45,22 +45,22 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
         return debugDesc
     }
     internal var debugDescGenerator: (() -> String) = { "" }
-    
+
     internal func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
         _debugDesc = nil
         debugDescGenerator = desc
         return self
     }
-    
+
     /// :nodoc:
     public var description: String {
         if debugDescription.count > 0 {
             return "Constraint<\(debugDescription) | strength: \(Strength.readableString(strength)) | operator: \(op)>"
         }
-        
+
         return "Constraint<(\(expression)) | strength: \(Strength.readableString(strength)) | operator: \(op)>"
     }
-    
+
     /// The expression held by the constraint
     private(set) var expression: Expression
 
@@ -69,19 +69,19 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
 
     /// The operator of the constraint
     private(set) var op: RelationalOperator
-    
+
     /// Create a constraint with the given expression and operator
     public convenience init(expr: Expression, op: RelationalOperator) {
         self.init(expr: expr, op: op, strength: Strength.REQUIRED)
     }
-    
+
     /// Create a constraint with the given expression, operator and strength
     public init(expr: Expression, op: RelationalOperator, strength: Double) {
         self.expression = Constraint.reduce(expr)
         self.op = op
         self.strength = Strength.clip(strength)
     }
-    
+
     /// Create a constraint, copying the provided constraint, with the given strength
     public convenience init(other: Constraint, strength: Double) {
         self.init(expr: other.expression, op: other.op, strength: strength)
@@ -102,45 +102,37 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
 
         return Expression(terms: reducedTerms, constant: expr.constant)
     }
-    
+
     /// Set the strength of the constraint
     public func setStrength(_ newStrength: Double) -> Constraint {
         self.strength = newStrength
         return self
     }
-
 }
 
 // MARK: Equatable
 extension Constraint: Equatable {
-    /// :nodoc:
     public static func == (lhs: Constraint, rhs: Constraint) -> Bool {
         return lhs === rhs
     }
-
 }
 
 // MARK: Hashable
 extension Constraint: Hashable {
-    /// :nodoc:
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
-    
 }
 
-
 // MARK: - EditConstraint
-
 internal final class EditConstraint: Constraint {
     internal var suggestedValue: Double?
-    
-    /// :nodoc:
+
     override public var description: String {
         if debugDescription.count > 0 {
             return "EditConstraint<\(debugDescription) | Strength: \(Strength.readableString(strength))>"
         }
-        
+
         return "EditConstraint<\(expression) == \(suggestedValue ?? 0) | Strength: \(Strength.readableString(strength))>"
     }
 }

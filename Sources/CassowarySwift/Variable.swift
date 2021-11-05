@@ -33,7 +33,7 @@
 
 public final class Variable: CustomStringConvertible {
     private weak var _owner: AnyObject?
-    
+
     private var _name: String?
     public var name: String {
         if _owner != nil {
@@ -41,7 +41,7 @@ public final class Variable: CustomStringConvertible {
             var ident = ObjectIdentifier(_owner!).debugDescription
             ident = ident.replacingOccurrences(of: "ObjectIdentifier(", with: "")
             ident = ident.replacingOccurrences(of: ")", with: "")
-            
+
             let varIdent = "\(typeName)(\(ident)).\(_name ?? "?")"
             return varIdent
         }
@@ -61,7 +61,7 @@ public final class Variable: CustomStringConvertible {
     public init(_ value: Double) {
         self.value = value
     }
-    
+
     public init(_ name: String, owner: AnyObject) {
         _name = name
         _owner = owner
@@ -71,18 +71,14 @@ public final class Variable: CustomStringConvertible {
 
 // MARK: Equatable
 extension Variable: Equatable {
-
     public static func == (lhs: Variable, rhs: Variable) -> Bool {
         return lhs === rhs
     }
-
 }
 
 // MARK: Hashable
 extension Variable: Hashable {
-
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
-
 }

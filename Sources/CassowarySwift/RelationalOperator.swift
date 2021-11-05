@@ -31,7 +31,7 @@
 
  */
 
-public enum RelationalOperator {
+public enum RelationalOperator: Hashable {
     case lessThanOrEqual
     case equal
     case greaterThanOrEqual

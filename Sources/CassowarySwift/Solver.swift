@@ -43,13 +43,14 @@ public final class Solver {
         var constraint: EditConstraint
         var constant: Double
 
-        public init(constraint: EditConstraint, tag: Tag, constant: Double){
+        public init(constraint: EditConstraint, tag: Tag, constant: Double) {
             self.constraint = constraint
             self.tag = tag
             self.constant = constant
         }
     }
 
+    private var autoSolve: Bool = true
     private var nextSymbolId: Int = 0
     private var constraintDict: [Constraint: Tag] = [:]
     private var rows = OrderedDictionary<Symbol, Row>()
@@ -58,11 +59,25 @@ public final class Solver {
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
-    
+
     // MARK: Initializers
-    
+
     public init() {
-        
+
+    }
+
+    /// If `true`, automatically optimizes the solver after each constraint
+    /// added, and if `false`, the system is not automatically optimized until
+    /// `setAutoSolve(true)` is invoked.
+    ///
+    /// The solver starts with auto-solve on by default.
+    public func setAutoSolve(_ autoSolve: Bool) throws {
+        if !self.autoSolve && autoSolve {
+            try optimize(objective: objective)
+            try dualOptimize()
+        }
+
+        self.autoSolve = autoSolve
     }
 
     /// Add a constraint to the solver.
@@ -72,7 +87,7 @@ public final class Solver {
         }
 
         let (row, tag) = createRow(constraint: constraint)
-        
+
         if let subject = try getSubject(constraint: constraint, row: row, tag: tag) {
             row.solveFor(subject)
             substitute(symbol: subject, row: row)
@@ -81,14 +96,16 @@ public final class Solver {
 
         constraintDict[constraint] = tag
 
-        try optimize(objective: objective)
+        if autoSolve {
+            try optimize(objective: objective)
+        }
     }
-    
+
     private func getSubject(constraint: Constraint, row: Row, tag: Tag) throws -> Symbol? {
         if let subject = chooseSubject(row: row, tag: tag) {
             return subject
         }
-        
+
         if Solver.allDummies(row: row) {
             if !row.constant.isNearZero {
                 throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
@@ -96,14 +113,14 @@ public final class Solver {
                 return tag.marker
             }
         }
-        
+
         if try !addWithArtificialVariable(row: row) {
             throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
         }
-        
+
         return nil
     }
-    
+
     /// Remove a constraint from the solver
     public func removeConstraint(_ constraint: Constraint) throws {
         guard let tag = constraintDict[constraint] else {
@@ -133,7 +150,9 @@ public final class Solver {
             }
         }
 
-        try optimize(objective: objective)
+        if autoSolve {
+            try optimize(objective: objective)
+        }
     }
 
     private func removeConstraintEffects(constraint: Constraint, tag: Tag) {
@@ -153,9 +172,9 @@ public final class Solver {
     }
 
     private func getMarkerLeavingRow(marker: Symbol) -> Row? {
-        let dmax = Double.greatestFiniteMagnitude
-        var r1 = dmax
-        var r2 = dmax
+        let dMax = Double.greatestFiniteMagnitude
+        var r1 = dMax
+        var r2 = dMax
 
         var first: Row?
         var second: Row?
@@ -195,12 +214,12 @@ public final class Solver {
 
         return third
     }
-    
+
     /// Check if the solver has a constraint
     public func hasConstraint(_ constraint: Constraint) -> Bool {
         return constraintDict[constraint] != nil
     }
-    
+
     /**
      Add an edit constraint on the provided variable, so that suggestValue can be used on it.
      - parameters:
@@ -232,7 +251,7 @@ public final class Solver {
         let info = EditInfo(constraint: constraint, tag: constraintDict[constraint]!, constant: 0.0)
         variableEditInfo[variable] = info
     }
-    
+
     /**
      Remove an edit constraint on the provided variable.
      Throws an error if the variable does not have an edit constraint
@@ -250,12 +269,12 @@ public final class Solver {
 
         variableEditInfo[variable] = nil
     }
-    
+
     /// Checks if the solver has an edit constraint for the provided variable.
     public func hasEditVariable(_ variable: Variable) -> Bool {
         return variableEditInfo[variable] != nil
     }
-    
+
     /**
      Specify a desired value for the provided variable.
      The variable needs to have been previously added as an edit variable.
@@ -274,9 +293,11 @@ public final class Solver {
             if row.add(-delta) < 0.0 {
                 infeasibleRows.append(info.tag.marker)
             }
-            
-            try dualOptimize()
-            
+
+            if autoSolve {
+                try dualOptimize()
+            }
+
             return
         }
 
@@ -284,9 +305,11 @@ public final class Solver {
             if row.add(delta) < 0.0 {
                 infeasibleRows.append(otherTag)
             }
-            
-            try dualOptimize()
-            
+
+            if autoSolve {
+                try dualOptimize()
+            }
+
             return
         }
 
@@ -297,7 +320,9 @@ public final class Solver {
             }
         }
 
-        try dualOptimize()
+        if autoSolve {
+            try dualOptimize()
+        }
     }
 
     /**
@@ -313,6 +338,16 @@ public final class Solver {
         }
     }
 
+    /// Returns a string representing the internal state of the solver.
+    internal func stateDescription() -> String {
+        var string = ""
+
+        for row in rows.orderedEntries {
+            string += "\(row.key) = \(row.value)\n"
+        }
+
+        return string.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     /**
      * Create a new Row object for the given constraint.
@@ -334,7 +369,7 @@ public final class Solver {
     private func createRow(constraint: Constraint) -> (Row, Tag) {
         let expression = constraint.expression
         let row = Row(constant: expression.constant)
-        
+
         var marker: Symbol
         var other: Symbol?
 
@@ -400,7 +435,6 @@ public final class Solver {
      If a subject cannot be found, an invalid symbol will be returned.
      */
     private func chooseSubject(row: Row, tag: Tag) -> Symbol? {
-
         for key in row.cells.keys {
             if key.symbolType == .external {
                 return key
@@ -648,7 +682,7 @@ public final class Solver {
             return symbol
         }
     }
-    
+
     private func createSymbol(type: Symbol.SymbolType) -> Symbol {
         nextSymbolId = nextSymbolId &+ 1
         return Symbol(id: nextSymbolId, type)

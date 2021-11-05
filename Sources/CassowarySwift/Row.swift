@@ -33,11 +33,28 @@
 
 import Foundation
 
-final class Row {
+final class Row: CustomStringConvertible {
 
     private(set) var constant: Double
 
     private(set) var cells: OrderedDictionary<Symbol, Double> = [:]
+
+    var description: String {
+        var string = cells.orderedEntries.map {
+            if $0.value.isApproximately(value: 1.0) {
+                return "\($0.key)"
+            }
+            return "\($0.value) * \($0.key)"
+        }.joined(separator: " + ")
+
+        if !constant.isApproximately(value: 0.0) {
+            string = "\(constant) + \(string)"
+        }
+
+        string = string.replacingOccurrences(of: "+ -1.0 * ", with: "- ")
+
+        return string.trimmingCharacters(in: .whitespaces)
+    }
 
     convenience init() {
         self.init(constant: 0)
@@ -48,7 +65,7 @@ final class Row {
     }
 
     init(_ other: Row) {
-        self.cells = OrderedDictionary<Symbol, Double>(other.cells)
+        self.cells = .init(other.cells)
         self.constant = other.constant
     }
 
@@ -157,7 +174,7 @@ final class Row {
         let coeff = -1.0 / cells[symbol]!
         cells[symbol] = nil
         constant *= coeff
-        
+
         cells = cells.mapValues { value in
             value * coeff
         }

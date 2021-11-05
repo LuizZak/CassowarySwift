@@ -31,7 +31,7 @@
 
  */
 
-struct Symbol {
+struct Symbol: CustomStringConvertible {
     enum SymbolType {
         case external
         case slack
@@ -41,6 +41,19 @@ struct Symbol {
 
     let id: Int
     let symbolType: SymbolType
+
+    var description: String {
+        switch symbolType {
+        case .slack:
+            return "s\(id)"
+        case .dummy:
+            return "d\(id)"
+        case .error:
+            return "e\(id)"
+        case .external:
+            return "x\(id)"
+        }
+    }
 
     init(id: Int, _ symbolType: SymbolType) {
         self.id = id
