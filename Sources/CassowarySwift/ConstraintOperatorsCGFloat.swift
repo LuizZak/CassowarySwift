@@ -31,6 +31,8 @@
  
  */
 
+#if !os(iOS)
+
 import Foundation
 
 extension Term {
@@ -258,3 +260,5 @@ public func modifyStrength(_ constraint: Constraint, _ strength: CGFloat) -> Con
 public func modifyStrength(_ strength: CGFloat, _ constraint: Constraint) -> Constraint {
     return modifyStrength(constraint, strength)
 }
+
+#endif

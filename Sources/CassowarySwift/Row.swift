@@ -217,7 +217,6 @@ final class Row: CustomStringConvertible {
             insert(other: row, coefficient: coeff)
         }
     }
-
 }
 
 // MARK: Equatable
