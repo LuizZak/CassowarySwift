@@ -55,7 +55,7 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
     /// :nodoc:
     public var description: String {
         if debugDescription.count > 0 {
-            return "Constraint<\(debugDescription) | Strength: \(Strength.readableString(strength))>"
+            return "Constraint<\(debugDescription) | strength: \(Strength.readableString(strength)) | operator: \(op)>"
         }
         
         return "Constraint<(\(expression)) | strength: \(Strength.readableString(strength)) | operator: \(op)>"
