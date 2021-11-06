@@ -1,12 +1,13 @@
 /// An ordered dictionary of symbol-keyed values.
 struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
-    var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
-
-    private(set) var keys = [Symbol]()
     private var dictionary = [Int: ValueType]()
+    
+    private(set) var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
+    private(set) var keys = [Symbol]()
 
     var count: Int { return keys.count }
-
+    
+    /// Returns a list of ordered key-value pairs in this ordered dictionary.
     var orderedEntries: [(key: Symbol, value: ValueType)] {
         @_transparent
         get {
@@ -17,6 +18,11 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
             }
             return _cache.value.unsafelyUnwrapped
         }
+    }
+    
+    /// Returns a list of unordered values in this ordered dictionary.
+    var unorderedValues: [ValueType] {
+        return Array(dictionary.values)
     }
 
     subscript(key: Symbol) -> ValueType? {
@@ -40,10 +46,10 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     }
 
     @_transparent
-    init(_ dict: SymbolOrderedDictionary<ValueType>) {
-        self.keys = dict.keys
-        self.dictionary = dict.dictionary
-        self._cache = dict._cache
+    init(_ other: SymbolOrderedDictionary<ValueType>) {
+        self.keys = other.keys
+        self.dictionary = other.dictionary
+        self._cache = other._cache
     }
 
     @_transparent

@@ -497,7 +497,7 @@ public final class Solver {
         }
 
         // Remove the artificial variable from the tableau.
-        for (_, row) in rows.orderedEntries {
+        for row in rows.unorderedValues {
             row.remove(symbol: art)
         }
 
