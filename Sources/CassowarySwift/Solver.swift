@@ -100,8 +100,8 @@ public final class Solver {
      Update the values of the external solver variables.
      */
     public func updateVariables() {
-        for (variable, value) in variableSymbols {
-            if let row = rows[value] {
+        for (variable, symbol) in variableSymbols {
+            if let row = rows[symbol] {
                 variable.value = row.constant
             } else {
                 variable.value = 0
@@ -377,15 +377,13 @@ public final class Solver {
         var marker: Symbol
         var other: Symbol?
 
-        for term in expression.terms {
-            if !term.coefficient.isNearZero {
-                let symbol = getVarSymbol(term.variable)
+        for term in expression.terms where !term.coefficient.isNearZero {
+            let symbol = getVarSymbol(term.variable)
 
-                if let otherRow = rows[symbol] {
-                    row.insert(other: otherRow, coefficient: term.coefficient)
-                } else {
-                    row.insert(symbol: symbol, coefficient: term.coefficient)
-                }
+            if let otherRow = rows[symbol] {
+                row.insert(other: otherRow, coefficient: term.coefficient)
+            } else {
+                row.insert(symbol: symbol, coefficient: term.coefficient)
             }
         }
 
@@ -662,9 +660,9 @@ public final class Solver {
         }
     }
 
-    private func createSymbol(type: Symbol.SymbolType) -> Symbol {
+    private func createSymbol(type: SymbolType) -> Symbol {
         nextSymbolId = nextSymbolId &+ 1
-        return Symbol(id: nextSymbolId, type)
+        return Symbol(id: nextSymbolId, symbolType: type)
     }
 
     /**

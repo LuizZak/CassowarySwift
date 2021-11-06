@@ -1,27 +1,28 @@
 /// An ordered dictionary of symbol-keyed values.
 struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
-    typealias KeyType = Symbol
+    var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
 
-    private(set) var keys = [KeyType]()
+    private(set) var keys = [Symbol]()
     private var dictionary = [Int: ValueType]()
 
     var count: Int { return keys.count }
 
-    internal var _cachedOrderedEntries: [(key: KeyType, value: ValueType)]? = nil
-
-    var orderedEntries: [(key: KeyType, value: ValueType)] {
-        mutating get {
-            if _cachedOrderedEntries == nil {
-                _cachedOrderedEntries = keys.map {
+    var orderedEntries: [(key: Symbol, value: ValueType)] {
+        @_transparent
+        get {
+            if _cache.value == nil {
+                _cache.value = keys.map {
                     (key: $0, value: dictionary[$0.id].unsafelyUnwrapped)
                 }
             }
-            return _cachedOrderedEntries.unsafelyUnwrapped
+            return _cache.value.unsafelyUnwrapped
         }
     }
 
-    subscript(key: KeyType) -> ValueType? {
+    subscript(key: Symbol) -> ValueType? {
+        @_transparent
         get { return self.dictionary[key.id] }
+        @_transparent
         set {
             if let v = newValue {
                 updateValue(v, forKey: key)
@@ -31,53 +32,68 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         }
     }
 
-    init(dictionaryLiteral elements: (KeyType, ValueType)...) {
+    @_transparent
+    init(dictionaryLiteral elements: (Symbol, ValueType)...) {
         for (k, v) in elements {
             self[k] = v
         }
     }
 
+    @_transparent
     init(_ dict: SymbolOrderedDictionary<ValueType>) {
         self.keys = dict.keys
         self.dictionary = dict.dictionary
-        self._cachedOrderedEntries = dict._cachedOrderedEntries
+        self._cache = dict._cache
     }
 
-    private init(keys: [KeyType], dictionary: [Int: ValueType]) {
+    @_transparent
+    private init(keys: [Symbol], dictionary: [Int: ValueType]) {
         self.keys = keys
         self.dictionary = dictionary
     }
 
-    mutating func updateValue(_ value: ValueType, forKey key: KeyType) {
+    mutating func ensureUnique() {
+        if !isKnownUniquelyReferenced(&_cache) {
+            _cache = _cache.copy()
+        }
+    }
+
+    mutating func updateValue(_ value: ValueType, forKey key: Symbol) {
+        ensureUnique()
+
         let oldVal = dictionary.updateValue(value, forKey: key.id)
 
         if oldVal == nil {
             keys.append(key)
-            _cachedOrderedEntries?.append((key, value))
+            _cache.value?.append((key, value))
         } else {
-            _cachedOrderedEntries = nil
+            _cache.value = nil
         }
     }
 
     /// Removes all occurrences of a given value from this dictionary
     mutating func removeOccurrences(ofValue value: ValueType) where ValueType: Equatable {
+        ensureUnique()
+
         for (i, k) in keys.enumerated().reversed() {
             if dictionary[k.id] == value {
                 dictionary.removeValue(forKey: k.id)
                 keys.remove(at: i)
-                _cachedOrderedEntries?.remove(at: i)
+                _cache.value?.remove(at: i)
             }
         }
     }
 
     @discardableResult
-    mutating func removeValue(forKey key: KeyType) -> ValueType? {
+    mutating func removeValue(forKey key: Symbol) -> ValueType? {
         guard let removed = dictionary.removeValue(forKey: key.id) else {
             return nil
         }
 
         if let index = index(forKey: key) {
-            _cachedOrderedEntries?.remove(at: index)
+            ensureUnique()
+
+            _cache.value?.remove(at: index)
             keys.remove(at: index)
         }
 
@@ -90,7 +106,20 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         return SymbolOrderedDictionary<T>(keys: keys, dictionary: newValues)
     }
 
-    func index(forKey key: KeyType) -> Int? {
+    @_transparent
+    func index(forKey key: Symbol) -> Int? {
         return keys.firstIndex { $0 == key }
+    }
+
+    class OrderedEntriesCache {
+        var value: [(key: Symbol, value: ValueType)]?
+
+        init(value: [(key: Symbol, value: ValueType)]?) {
+            self.value = value
+        }
+
+        func copy() -> OrderedEntriesCache {
+            return OrderedEntriesCache(value: value)
+        }
     }
 }

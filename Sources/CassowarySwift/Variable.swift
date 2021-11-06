@@ -45,6 +45,7 @@ public final class Variable: CustomStringConvertible {
             let varIdent = "\(typeName)(\(ident)).\(_name ?? "?")"
             return varIdent
         }
+
         return _name ?? "\(value)"
     }
 
@@ -66,7 +67,6 @@ public final class Variable: CustomStringConvertible {
         _name = name
         _owner = owner
     }
-
 }
 
 // MARK: Equatable

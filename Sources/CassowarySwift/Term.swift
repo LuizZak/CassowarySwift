@@ -31,22 +31,18 @@
 
  */
 
-public final class Term: CustomStringConvertible, CassowaryDebugDescription {
+public struct Term: CustomStringConvertible, CassowaryDebugDescription {
     internal var _debugDesc: String?
     internal var debugDescription: String {
-        if let debugDesc = _debugDesc {
-            return debugDesc
-        }
-        let debugDesc = debugDescGenerator()
-        _debugDesc = debugDesc
-        return debugDesc
+        return debugDescGenerator()
     }
     internal var debugDescGenerator: (() -> String) = { "" }
-    
+
     internal func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
-        _debugDesc = nil
-        debugDescGenerator = desc
-        return self
+        var copy = self
+        copy._debugDesc = nil
+        copy.debugDescGenerator = desc
+        return copy
     }
 
     public var variable: Variable
@@ -61,6 +57,10 @@ public final class Term: CustomStringConvertible, CassowaryDebugDescription {
         self.coefficient = coefficient
     }
 
+    public init(variable: Variable) {
+        self.init(variable: variable, coefficient: 1.0)
+    }
+
     public var description: String {
         if coefficient.isApproximately(value: 1.0) {
             return variable.description
@@ -68,10 +68,4 @@ public final class Term: CustomStringConvertible, CassowaryDebugDescription {
             return "\(variable.description) * \(coefficient)"
         }
     }
-
-    public convenience init(variable: Variable) {
-        self.init(variable: variable, coefficient: 1.0)
-    }
-    
-    
 }

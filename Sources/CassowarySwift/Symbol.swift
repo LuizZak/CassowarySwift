@@ -32,16 +32,10 @@
  */
 
 struct Symbol: CustomStringConvertible {
-    enum SymbolType {
-        case external
-        case slack
-        case error
-        case dummy
-    }
-
     let id: Int
     let symbolType: SymbolType
 
+    @_transparent
     var description: String {
         switch symbolType {
         case .slack:
@@ -55,7 +49,8 @@ struct Symbol: CustomStringConvertible {
         }
     }
 
-    init(id: Int, _ symbolType: SymbolType) {
+    @_transparent
+    init(id: Int, symbolType: SymbolType) {
         self.id = id
         self.symbolType = symbolType
     }
@@ -63,6 +58,7 @@ struct Symbol: CustomStringConvertible {
 
 // MARK: Equatable
 extension Symbol: Equatable {
+    @_transparent
     static func == (lhs: Symbol, rhs: Symbol) -> Bool {
         return lhs.id == rhs.id
     }
@@ -70,7 +66,15 @@ extension Symbol: Equatable {
 
 // MARK: Hashable
 extension Symbol: Hashable {
+    @_transparent
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
+}
+
+enum SymbolType {
+    case external
+    case slack
+    case error
+    case dummy
 }

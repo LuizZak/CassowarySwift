@@ -50,7 +50,7 @@ class TermTests: XCTestCase {
         let x = Variable("x")
         let y = Variable("y")
 
-        let term = Term(variable: x)
+        var term = Term(variable: x)
         XCTAssertEqual(term.variable, x)
 
         term.variable = y
@@ -58,7 +58,7 @@ class TermTests: XCTestCase {
     }
 
     func testUpdateCoefficient() {
-        let term = Term(variable: Variable("x"))
+        var term = Term(variable: Variable("x"))
         term.coefficient = 1234.5678
 
         assertIsCloseTo(term.coefficient, 1234.5678)
@@ -73,7 +73,7 @@ class TermTests: XCTestCase {
     }
 
     func testDescription() {
-        let term = Term(variable: Variable("x"))
+        var term = Term(variable: Variable("x"))
         XCTAssertEqual(term.description, "x")
 
         term.coefficient = 2.0

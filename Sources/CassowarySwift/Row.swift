@@ -73,6 +73,7 @@ final class Row: CustomStringConvertible {
      Add a constant value to the row constant.
      - returns: The new value of the constant
      */
+    @discardableResult
     func add(_ value: Double) -> Double {
         self.constant += value
         return self.constant
@@ -85,7 +86,7 @@ final class Row: CustomStringConvertible {
      added to the existing coefficient. If the resulting coefficient
      is zero, the symbol will be removed from the row
      */
-    func insert(symbol: Symbol, coefficient: Double) {
+    func insert(symbol: Symbol, coefficient: Double = 1.0) {
         var coeff = coefficient
 
         if let existingCoefficient = cells[symbol] {
@@ -100,47 +101,18 @@ final class Row: CustomStringConvertible {
     }
 
     /**
-     Insert a symbol into the row with a given coefficient.
-
-     If the symbol already exists in the row, the coefficient will be
-     added to the existing coefficient. If the resulting coefficient
-     is zero, the symbol will be removed from the row
-     */
-    func insert(symbol: Symbol) {
-        insert(symbol: symbol, coefficient: 1.0)
-    }
-
-    /**
      Insert a row into this row with a given coefficient.
 
      The constant and the cells of the other row will be multiplied by
      the coefficient and added to this row. Any cell with a resulting
      coefficient of zero will be removed from the row.
      */
-    func insert(other: Row, coefficient: Double) {
-        constant += other.constant * coefficient
+    func insert(other: Row, coefficient: Double = 1.0) {
+        add(other.constant * coefficient)
 
         for (s, value) in other.cells.orderedEntries {
-            let coeff = value * coefficient
-
-            let temp = (cells[s] ?? 0.0) + coeff
-            if temp.isNearZero {
-                cells[s] = nil
-            } else {
-                cells[s] = temp
-            }
+            insert(symbol: s, coefficient: value * coefficient)
         }
-    }
-
-    /**
-     Insert a row into this row with a given coefficient.
-
-     The constant and the cells of the other row will be multiplied by
-     the coefficient and added to this row. Any cell with a resulting
-     coefficient of zero will be removed from the row.
-     */
-    func insert(other: Row) {
-        insert(other: other, coefficient: 1.0)
     }
 
     /**
