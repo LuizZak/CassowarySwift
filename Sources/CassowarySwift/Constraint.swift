@@ -88,7 +88,9 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
     }
 
     private static func reduce(_ expr: Expression) -> Expression {
-        let vars = OrderedDictionary<Variable, Double>()
+        // TODO: Test whether changing this from an OrderedDictionary to a simple
+        // dictionary impacts the solver negatively.
+        var vars: [Variable: Double] = [:]
 
         for term in expr.terms {
             var value = vars[term.variable] ?? 0.0

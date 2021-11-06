@@ -111,7 +111,8 @@
 		],
 		"ShortcutMenuBar.userButton01Command": "workbench.action.tasks.runTask|Build (debug)",
         "ShortcutMenuBar.userButton02Command": "workbench.action.tasks.runTask|Test",
-        "ShortcutMenuBar.userButton03Command": "workbench.action.tasks.runTask|Report build time (debug)",
+        "ShortcutMenuBar.userButton03Command": "workbench.action.tasks.runTask|Test (performance)",
+        "ShortcutMenuBar.userButton04Command": "workbench.action.tasks.runTask|Report build time (debug)",
         "cSpell.words": [
             "coeff",
             "errminus",

@@ -37,7 +37,7 @@ final class Row: CustomStringConvertible {
 
     private(set) var constant: Double
 
-    private(set) var cells: OrderedDictionary<Symbol, Double> = [:]
+    private(set) var cells: SymbolOrderedDictionary<Double> = [:]
 
     var description: String {
         var string = cells.orderedEntries.map {
@@ -120,7 +120,7 @@ final class Row: CustomStringConvertible {
     func insert(other: Row, coefficient: Double) {
         constant += other.constant * coefficient
 
-        for (s, value) in other.cells.dictionary {
+        for (s, value) in other.cells.orderedEntries {
             let coeff = value * coefficient
 
             let temp = (cells[s] ?? 0.0) + coeff

@@ -49,6 +49,8 @@ public class SolverTransaction {
             return
         }
 
+        try solver.setAutoSolve(false)
+
         for change in changes {
             switch change {
             case .addConstraint(let constraint):
@@ -67,6 +69,8 @@ public class SolverTransaction {
                 try solver.suggestValue(variable: variable, value: value)
             }
         }
+
+        try solver.setAutoSolve(true)
     }
 
     /// Cancels this transaction, dropping all changes to be made.

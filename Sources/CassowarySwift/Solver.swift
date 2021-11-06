@@ -53,7 +53,7 @@ public final class Solver {
     private var autoSolve: Bool = true
     private var nextSymbolId: Int = 0
     private var constraintDict: [Constraint: Tag] = [:]
-    private var rows = OrderedDictionary<Symbol, Row>()
+    private var rows = SymbolOrderedDictionary<Row>()
     private var variableSymbols: [Variable: Symbol] = [:]
     private var variableEditInfo: [Variable: EditInfo] = [:]
     private var infeasibleRows = [Symbol]()
@@ -138,24 +138,13 @@ public final class Solver {
         constraintDict[constraint] = nil
         removeConstraintEffects(constraint: constraint, tag: tag)
         if rows.removeValue(forKey: tag.marker) == nil {
-            guard let row = getMarkerLeavingRow(marker: tag.marker) else {
+            guard let (leaving, row) = getMarkerLeavingRow(marker: tag.marker) else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
 
-            var leaving: Symbol?
-            for (s, r) in rows.orderedEntries {
-                if r == row {
-                    leaving = s
-                }
-            }
-
-            if let leaving = leaving {
-                rows[leaving] = nil
-                row.solveFor(leaving, tag.marker)
-                substitute(symbol: tag.marker, row: row)
-            } else {
-                throw CassowaryError.internalSolver("Internal solver error")
-            }
+            rows[leaving] = nil
+            row.solveFor(leaving, tag.marker)
+            substitute(symbol: tag.marker, row: row)
         }
 
         if autoSolve {
@@ -309,14 +298,14 @@ public final class Solver {
         }
     }
 
-    private func getMarkerLeavingRow(marker: Symbol) -> Row? {
+    private func getMarkerLeavingRow(marker: Symbol) -> (Symbol, Row)? {
         let dMax = Double.greatestFiniteMagnitude
         var r1 = dMax
         var r2 = dMax
 
-        var first: Row?
-        var second: Row?
-        var third: Row?
+        var first: (Symbol, Row)?
+        var second: (Symbol, Row)?
+        var third: (Symbol, Row)?
 
         for (s, candidateRow) in rows.orderedEntries {
             let c = candidateRow.coefficientFor(marker)
@@ -326,18 +315,18 @@ public final class Solver {
             }
 
             if s.symbolType == .external {
-                third = candidateRow
+                third = (s, candidateRow)
             } else if c < 0.0 {
                 let r = -candidateRow.constant / c
                 if r < r1 {
                     r1 = r
-                    first = candidateRow
+                    first = (s, candidateRow)
                 }
             } else {
                 let r = candidateRow.constant / c
                 if r < r2 {
                     r2 = r
-                    second = candidateRow
+                    second = (s, candidateRow)
                 }
             }
         }
@@ -705,6 +694,6 @@ public final class Solver {
      Test whether a row is composed of all dummy variables.
      */
     private static func allDummies(row: Row) -> Bool {
-        return row.cells.dictionary.keys.allSatisfy { $0.symbolType == .dummy }
+        return row.cells.keys.allSatisfy { $0.symbolType == .dummy }
     }
 }
