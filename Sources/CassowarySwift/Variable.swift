@@ -67,21 +67,21 @@ public final class Variable: Codable, CustomStringConvertible {
         _name = name
         _owner = owner
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         _name = try container.decode(String.self, forKey: .name)
         value = try container.decode(Double.self, forKey: .value)
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        try container.encode(name, forKey: .name)
+
+        try container.encode(_name, forKey: .name)
         try container.encode(value, forKey: .value)
     }
-    
+
     private enum CodingKeys: CodingKey {
         case name
         case value
