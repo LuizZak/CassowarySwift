@@ -47,7 +47,8 @@
                 "command": "swift",
                 "args": [
                     "test",
-                    "-Xswiftc", "-DPERFORMANCE_TESTS"
+                    "-Xswiftc", "-DPERFORMANCE_TESTS",
+                    "-Xswiftc", "-O"
                 ]
             },
             {

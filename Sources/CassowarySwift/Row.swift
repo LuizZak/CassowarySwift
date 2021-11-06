@@ -65,7 +65,7 @@ final class Row: CustomStringConvertible {
     }
 
     init(_ other: Row) {
-        self.cells = .init(other.cells)
+        self.cells = other.cells
         self.constant = other.constant
     }
 

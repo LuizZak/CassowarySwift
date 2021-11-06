@@ -37,26 +37,10 @@ class SymbolOrderedDictionaryTests: XCTestCase {
         }
 
         measure {
-            var copy = SymbolOrderedDictionary(dict)
+            var copy = dict
 
             for index in 0..<count {
                 copy.removeValue(forKey: Symbol(id: index % (count / 2), symbolType: .external))
-            }
-        }
-    }
-
-    func testRemoveOccurrencesOfValue_performance() {
-        let count = 1_000
-        var dict = SymbolOrderedDictionary<Int>()
-        for index in 0..<count {
-            dict[Symbol(id: index, symbolType: .external)] = index
-        }
-
-        measure {
-            var copy = SymbolOrderedDictionary(dict)
-
-            for index in 0..<count {
-                copy.removeOccurrences(ofValue: index % (count / 2))
             }
         }
     }

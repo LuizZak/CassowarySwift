@@ -1,3 +1,9 @@
+#if UNORDERED_DICTIONARY
+
+typealias SymbolOrderedDictionary<ValueType> = Dictionary<Symbol, ValueType>
+
+#else
+
 /// An ordered dictionary of symbol-keyed values.
 struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     private var dictionary = [Int: ValueType]()
@@ -5,11 +11,13 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     private(set) var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
     private(set) var keys = [Symbol]()
 
+    @_transparent
     var count: Int { return keys.count }
 
     /// Returns a list of unordered values in this ordered dictionary.
-    var unorderedValues: [ValueType] {
-        return Array(dictionary.values)
+    @_transparent
+    var values: Dictionary<Int, ValueType>.Values {
+        return dictionary.values
     }
 
     subscript(key: Symbol) -> ValueType? {
@@ -61,19 +69,6 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
             _cache.value?.append((key, value))
         } else {
             _cache.value = nil
-        }
-    }
-
-    /// Removes all occurrences of a given value from this dictionary
-    mutating func removeOccurrences(ofValue value: ValueType) where ValueType: Equatable {
-        ensureUnique()
-
-        for (i, k) in keys.enumerated().reversed() {
-            if dictionary[k.id] == value {
-                dictionary.removeValue(forKey: k.id)
-                keys.remove(at: i)
-                _cache.value?.remove(at: i)
-            }
         }
     }
 
@@ -162,3 +157,5 @@ extension SymbolOrderedDictionary: Sequence {
 
     #endif
 }
+
+#endif

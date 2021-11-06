@@ -477,20 +477,20 @@ public final class Solver {
         let art = createSymbol(type: .slack)
         rows[art] = Row(row)
 
-        artificial = Row(row)
+        let artificial = Row(row)
+        self.artificial = artificial
 
         // Optimize the artificial objective. This is successful
         // only if the artificial objective is optimized to zero.
-        try optimize(objective: artificial.unsafelyUnwrapped)
-        let success = artificial.unsafelyUnwrapped.constant.isNearZero
-        artificial = nil
+        try optimize(objective: artificial)
+
+        let success = artificial.constant.isNearZero
+        self.artificial = nil
 
         // If the artificial variable is basic, pivot the row so that
         // it becomes basic. If the row is constant, exit early.
 
-        if let rowPtr = rows[art] {
-            rows.removeOccurrences(ofValue: rowPtr)
-
+        if let rowPtr = rows.removeValue(forKey: art) {
             if rowPtr.cells.count == 0 {
                 return success
             }
@@ -505,7 +505,7 @@ public final class Solver {
         }
 
         // Remove the artificial variable from the tableau.
-        for row in rows.unorderedValues {
+        for row in rows.values {
             row.remove(symbol: art)
         }
 
