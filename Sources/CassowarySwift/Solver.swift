@@ -32,18 +32,17 @@
  */
 
 public final class Solver {
-
-    private struct Tag {
+    internal struct Tag {
         var marker: Symbol
         var other: Symbol?
     }
 
-    private class EditInfo {
+    internal class EditInfo {
         var tag: Tag
         var constraint: EditConstraint
         var constant: Double
 
-        public init(constraint: EditConstraint, tag: Tag, constant: Double) {
+        init(constraint: EditConstraint, tag: Tag, constant: Double) {
             self.constraint = constraint
             self.tag = tag
             self.constant = constant
@@ -55,10 +54,19 @@ public final class Solver {
     private var constraintDict: [Constraint: Tag] = [:]
     private var rows = SymbolOrderedDictionary<Row>()
     private var variableSymbols: [Variable: Symbol] = [:]
-    private var variableEditInfo: [Variable: EditInfo] = [:]
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
+    
+    private(set) var variableEditInfo: [Variable: EditInfo] = [:]
+    
+    var variables: [Variable] {
+        return Array(variableSymbols.keys)
+    }
+    
+    var constraints: [Constraint] {
+        return Array(constraintDict.keys)
+    }
 
     // MARK: Initializers
 

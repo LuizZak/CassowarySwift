@@ -44,7 +44,7 @@ public class SolverTransaction {
     ///
     /// If a previous call to `cancel` was made prior to `apply`, changes are
     /// ignored.
-    public func apply() throws {
+    public func apply(updateVariables: Bool = true) throws {
         if isCancelled {
             return
         }
@@ -71,6 +71,10 @@ public class SolverTransaction {
         }
 
         try solver.setAutoSolve(true)
+        
+        if updateVariables {
+            solver.updateVariables()
+        }
     }
 
     /// Cancels this transaction, dropping all changes to be made.
