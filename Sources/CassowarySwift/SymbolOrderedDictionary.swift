@@ -1,5 +1,5 @@
 /// An ordered dictionary of symbol-keyed values.
-final class SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
+struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     typealias KeyType = Symbol
 
     private(set) var keys = [KeyType]()
@@ -10,12 +10,14 @@ final class SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     internal var _cachedOrderedEntries: [(key: KeyType, value: ValueType)]? = nil
 
     var orderedEntries: [(key: KeyType, value: ValueType)] {
-        if _cachedOrderedEntries == nil {
-            _cachedOrderedEntries = keys.map {
-                (key: $0, value: dictionary[$0.id]!)
+        mutating get {
+            if _cachedOrderedEntries == nil {
+                _cachedOrderedEntries = keys.map {
+                    (key: $0, value: dictionary[$0.id].unsafelyUnwrapped)
+                }
             }
+            return _cachedOrderedEntries.unsafelyUnwrapped
         }
-        return _cachedOrderedEntries!
     }
 
     subscript(key: KeyType) -> ValueType? {
@@ -29,7 +31,7 @@ final class SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         }
     }
 
-    required init(dictionaryLiteral elements: (KeyType, ValueType)...) {
+    init(dictionaryLiteral elements: (KeyType, ValueType)...) {
         for (k, v) in elements {
             self[k] = v
         }
@@ -46,7 +48,7 @@ final class SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         self.dictionary = dictionary
     }
 
-    func updateValue(_ value: ValueType, forKey key: KeyType) {
+    mutating func updateValue(_ value: ValueType, forKey key: KeyType) {
         let oldVal = dictionary.updateValue(value, forKey: key.id)
 
         if oldVal == nil {
@@ -57,8 +59,19 @@ final class SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         }
     }
 
+    /// Removes all occurrences of a given value from this dictionary
+    mutating func removeOccurrences(ofValue value: ValueType) where ValueType: Equatable {
+        for (i, k) in keys.enumerated().reversed() {
+            if dictionary[k.id] == value {
+                dictionary.removeValue(forKey: k.id)
+                keys.remove(at: i)
+                _cachedOrderedEntries?.remove(at: i)
+            }
+        }
+    }
+
     @discardableResult
-    func removeValue(forKey key: KeyType) -> ValueType? {
+    mutating func removeValue(forKey key: KeyType) -> ValueType? {
         guard let removed = dictionary.removeValue(forKey: key.id) else {
             return nil
         }

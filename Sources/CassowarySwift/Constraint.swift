@@ -52,7 +52,6 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
         return self
     }
 
-    /// :nodoc:
     public var description: String {
         if debugDescription.count > 0 {
             return "Constraint<\(debugDescription) | strength: \(Strength.readableString(strength)) | operator: \(op)>"
@@ -98,8 +97,8 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
             vars[term.variable] = value
         }
 
-        let reducedTerms = vars.keys.map {
-            Term(variable: $0, coefficient: vars[$0]!)
+        let reducedTerms = vars.map {
+            Term(variable: $0, coefficient: $1)
         }
 
         return Expression(terms: reducedTerms, constant: expr.constant)

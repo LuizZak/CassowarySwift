@@ -37,7 +37,7 @@ final class Row: CustomStringConvertible {
 
     private(set) var constant: Double
 
-    private(set) var cells: SymbolOrderedDictionary<Double> = [:]
+    var cells: SymbolOrderedDictionary<Double> = [:]
 
     var description: String {
         var string = cells.orderedEntries.map {

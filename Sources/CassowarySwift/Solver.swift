@@ -475,38 +475,27 @@ public final class Solver {
 
         // Optimize the artificial objective. This is successful
         // only if the artificial objective is optimized to zero.
-        try optimize(objective: artificial!)
-        let success = artificial!.constant.isNearZero
+        try optimize(objective: artificial.unsafelyUnwrapped)
+        let success = artificial.unsafelyUnwrapped.constant.isNearZero
         artificial = nil
 
         // If the artificial variable is basic, pivot the row so that
         // it becomes basic. If the row is constant, exit early.
 
-        if let rowptr = rows[art] {
-            var deleteQueue = [Symbol]()
-            for (s, row) in rows.orderedEntries {
-                if row == rowptr {
-                    deleteQueue.append(s)
-                }
-            }
+        if let rowPtr = rows[art] {
+            rows.removeOccurrences(ofValue: rowPtr)
 
-            while !deleteQueue.isEmpty {
-                rows[deleteQueue.popLast()!] = nil
-            }
-
-            deleteQueue.removeAll()
-
-            if rowptr.cells.count == 0 {
+            if rowPtr.cells.count == 0 {
                 return success
             }
 
-            guard let entering = anyPivotableSymbol(rowptr) else {
+            guard let entering = anyPivotableSymbol(rowPtr) else {
                 return false // unsatisfiable (will this ever happen?)
             }
 
-            rowptr.solveFor(art, entering)
-            substitute(symbol: entering, row: rowptr)
-            rows[entering] = rowptr
+            rowPtr.solveFor(art, entering)
+            substitute(symbol: entering, row: rowPtr)
+            rows[entering] = rowPtr
         }
 
         // Remove the artificial variable from the tableau.
@@ -553,20 +542,12 @@ public final class Solver {
                 return
             }
 
-            guard let entry = getLeavingRow(entering) else {
+            guard let (leaving, entry) = getLeavingRow(entering) else {
                 throw CassowaryError.internalSolver("The objective is unbounded.")
             }
 
-            var leaving: Symbol?
-            var entryKey: Symbol?
-
-            for (key, row) in rows.orderedEntries where row == entry {
-                leaving = key
-                entryKey = key
-            }
-
-            rows.removeValue(forKey: entryKey!)
-            entry.solveFor(leaving!, entering)
+            rows.removeValue(forKey: leaving)
+            entry.solveFor(leaving, entering)
             substitute(symbol: entering, row: entry)
             rows[entering] = entry
         }
@@ -625,18 +606,16 @@ public final class Solver {
     /**
      Get the first Slack or Error symbol in the row.
 
-     sIf no such symbol is present, `nil` will be returned.
+     If no such symbol is present, `nil` will be returned.
      */
     private func anyPivotableSymbol(_ row: Row) -> Symbol? {
-        var symbol: Symbol?
-
         for entry in row.cells.orderedEntries {
             if entry.key.symbolType == .slack || entry.key.symbolType == .error {
-                symbol = entry.key
+                return entry.key
             }
         }
 
-        return symbol
+        return nil
     }
 
     /**
@@ -649,20 +628,18 @@ public final class Solver {
      found, `nil` will be returned. This indicates that
      the objective function is unbounded.
      */
-    private func getLeavingRow(_ entering: Symbol) -> Row? {
+    private func getLeavingRow(_ entering: Symbol) -> (Symbol, Row)? {
         var ratio = Double.greatestFiniteMagnitude
-        var row: Row?
+        var row: (Symbol, Row)?
 
-        for key in rows.keys {
-            if key.symbolType != .external {
-                let candidateRow = rows[key]!
-                let temp = candidateRow.coefficientFor(entering)
-                if temp < 0 {
-                    let tempRatio = -candidateRow.constant / temp
-                    if tempRatio < ratio {
-                        ratio = tempRatio
-                        row = candidateRow
-                    }
+        for (key, candidateRow) in rows.orderedEntries where key.symbolType != .external {
+            let temp = candidateRow.coefficientFor(entering)
+
+            if temp < 0 {
+                let tempRatio = -candidateRow.constant / temp
+                if tempRatio < ratio {
+                    ratio = tempRatio
+                    row = (key, candidateRow)
                 }
             }
         }
