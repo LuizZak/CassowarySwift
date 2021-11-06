@@ -35,7 +35,6 @@ import XCTest
 @testable import CassowarySwift
 
 class DoubleEpsilonTests: XCTestCase {
-
     func testIsNearZero() {
         XCTAssertTrue(0.000000001.isNearZero)
         XCTAssertFalse(1.0.isNearZero)
@@ -47,5 +46,4 @@ class DoubleEpsilonTests: XCTestCase {
         XCTAssertTrue(0.000000001.isApproximately(value: 0.0))
         XCTAssertFalse(1.0.isApproximately(value: 2.0))
     }
-
 }

@@ -80,8 +80,36 @@ public final class Solver {
         self.autoSolve = autoSolve
     }
 
-    /// Add a constraint to the solver.
-    public func addConstraint(_ constraint: Constraint) throws {
+    /// Starts a new solver transaction and returns the transaction object.
+    public func startTransaction() -> SolverTransaction {
+        return SolverTransaction(solver: self)
+    }
+
+    /// Starts a new solver transaction, invoking the block with the transaction
+    /// instance before applying all changes, if the transaction has not been
+    /// cancelled before the end of the block.
+    public func withTransaction(_ block: (SolverTransaction) -> Void) throws {
+        let transaction = startTransaction()
+
+        block(transaction)
+
+        try transaction.apply()
+    }
+
+    /**
+     Update the values of the external solver variables.
+     */
+    public func updateVariables() {
+        for (variable, value) in variableSymbols {
+            if let row = rows[value] {
+                variable.value = row.constant
+            } else {
+                variable.value = 0
+            }
+        }
+    }
+
+    internal func addConstraint(_ constraint: Constraint) throws {
         if constraintDict[constraint] != nil {
             throw CassowaryError.duplicateConstraint(constraint)
         }
@@ -101,28 +129,8 @@ public final class Solver {
         }
     }
 
-    private func getSubject(constraint: Constraint, row: Row, tag: Tag) throws -> Symbol? {
-        if let subject = chooseSubject(row: row, tag: tag) {
-            return subject
-        }
-
-        if Solver.allDummies(row: row) {
-            if !row.constant.isNearZero {
-                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
-            } else {
-                return tag.marker
-            }
-        }
-
-        if try !addWithArtificialVariable(row: row) {
-            throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
-        }
-
-        return nil
-    }
-
     /// Remove a constraint from the solver
-    public func removeConstraint(_ constraint: Constraint) throws {
+    internal func removeConstraint(_ constraint: Constraint) throws {
         guard let tag = constraintDict[constraint] else {
             throw CassowaryError.unknownConstraint(constraint)
         }
@@ -153,6 +161,136 @@ public final class Solver {
         if autoSolve {
             try optimize(objective: objective)
         }
+    }
+
+    /// Check if the solver has a constraint
+    internal func hasConstraint(_ constraint: Constraint) -> Bool {
+        return constraintDict[constraint] != nil
+    }
+
+    /**
+     Add an edit constraint on the provided variable, so that suggestValue can be used on it.
+     - parameters:
+         - variable: The Variable to add the edit constraint on
+         - strength: The strength of the constraint to add. This cannot be "Required".
+     */
+    internal func addEditVariable(variable: Variable, strength: Double) throws {
+        guard variableEditInfo[variable] == nil else {
+            throw CassowaryError.duplicateEditVariable
+        }
+
+        let clippedStrength = Strength.clip(strength)
+
+        if clippedStrength == Strength.REQUIRED {
+            throw CassowaryError.requiredFailure
+        }
+
+        var terms = [Term]()
+        terms.append(Term(variable: variable))
+        let constraint = EditConstraint(expr: Expression(terms: terms), op: .equal, strength: clippedStrength)
+
+        do {
+            try addConstraint(constraint)
+        } catch let error as CassowaryError {
+            print(error)
+        }
+
+        // TODO: Check if tag can be nil
+        let info = EditInfo(constraint: constraint, tag: constraintDict[constraint]!, constant: 0.0)
+        variableEditInfo[variable] = info
+    }
+
+    /**
+     Remove an edit constraint on the provided variable.
+     Throws an error if the variable does not have an edit constraint
+     */
+    internal func removeEditVariable(_ variable: Variable) throws {
+        guard let edit = variableEditInfo[variable] else {
+            throw CassowaryError.unknownEditVariable
+        }
+
+        do {
+            try removeConstraint(edit.constraint)
+        } catch {
+            print(error)
+        }
+
+        variableEditInfo[variable] = nil
+    }
+
+    /// Checks if the solver has an edit constraint for the provided variable.
+    internal func hasEditVariable(_ variable: Variable) -> Bool {
+        return variableEditInfo[variable] != nil
+    }
+
+    /**
+     Specify a desired value for the provided variable.
+     The variable needs to have been previously added as an edit variable.
+     Throws an error if the provided variable has not been previously added as an edit variable.
+     */
+    internal func suggestValue(variable: Variable, value: Double) throws {
+        guard let info = variableEditInfo[variable] else {
+            throw CassowaryError.unknownEditVariable
+        }
+
+        let delta = value - info.constant
+        info.constant = value
+        info.constraint.suggestedValue = value
+
+        if let row = rows[info.tag.marker] {
+            if row.add(-delta) < 0.0 {
+                infeasibleRows.append(info.tag.marker)
+            }
+
+            if autoSolve {
+                try dualOptimize()
+            }
+
+            return
+        }
+
+        if let otherTag = info.tag.other, let row = rows[otherTag] {
+            if row.add(delta) < 0.0 {
+                infeasibleRows.append(otherTag)
+            }
+
+            if autoSolve {
+                try dualOptimize()
+            }
+
+            return
+        }
+
+        for (s, row) in rows.orderedEntries {
+            let coefficient = row.coefficientFor(info.tag.marker)
+            if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
+                infeasibleRows.append(s)
+            }
+        }
+
+        if autoSolve {
+            try dualOptimize()
+        }
+    }
+
+    private func getSubject(constraint: Constraint, row: Row, tag: Tag) throws -> Symbol? {
+        if let subject = chooseSubject(row: row, tag: tag) {
+            return subject
+        }
+
+        if Solver.allDummies(row: row) {
+            if !row.constant.isNearZero {
+                throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
+            } else {
+                return tag.marker
+            }
+        }
+
+        if try !addWithArtificialVariable(row: row) {
+            throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
+        }
+
+        return nil
     }
 
     private func removeConstraintEffects(constraint: Constraint, tag: Tag) {
@@ -213,129 +351,6 @@ public final class Solver {
         }
 
         return third
-    }
-
-    /// Check if the solver has a constraint
-    public func hasConstraint(_ constraint: Constraint) -> Bool {
-        return constraintDict[constraint] != nil
-    }
-
-    /**
-     Add an edit constraint on the provided variable, so that suggestValue can be used on it.
-     - parameters:
-         - variable: The Variable to add the edit constraint on
-         - strength: The strength of the constraint to add. This cannot be "Required".
-     */
-    public func addEditVariable(variable: Variable, strength: Double) throws {
-        guard variableEditInfo[variable] == nil else {
-            throw CassowaryError.duplicateEditVariable
-        }
-
-        let clippedStrength = Strength.clip(strength)
-
-        if clippedStrength == Strength.REQUIRED {
-            throw CassowaryError.requiredFailure
-        }
-
-        var terms = [Term]()
-        terms.append(Term(variable: variable))
-        let constraint = EditConstraint(expr: Expression(terms: terms), op: .equal, strength: clippedStrength)
-
-        do {
-            try addConstraint(constraint)
-        } catch let error as CassowaryError {
-            print(error)
-        }
-
-        // TODO: Check if tag can be nil
-        let info = EditInfo(constraint: constraint, tag: constraintDict[constraint]!, constant: 0.0)
-        variableEditInfo[variable] = info
-    }
-
-    /**
-     Remove an edit constraint on the provided variable.
-     Throws an error if the variable does not have an edit constraint
-     */
-    public func removeEditVariable(_ variable: Variable) throws {
-        guard let edit = variableEditInfo[variable] else {
-            throw CassowaryError.unknownEditVariable
-        }
-
-        do {
-            try removeConstraint(edit.constraint)
-        } catch {
-            print(error)
-        }
-
-        variableEditInfo[variable] = nil
-    }
-
-    /// Checks if the solver has an edit constraint for the provided variable.
-    public func hasEditVariable(_ variable: Variable) -> Bool {
-        return variableEditInfo[variable] != nil
-    }
-
-    /**
-     Specify a desired value for the provided variable.
-     The variable needs to have been previously added as an edit variable.
-     Throws an error if the provided variable has not been previously added as an edit variable.
-     */
-    public func suggestValue(variable: Variable, value: Double) throws {
-        guard let info = variableEditInfo[variable] else {
-            throw CassowaryError.unknownEditVariable
-        }
-
-        let delta = value - info.constant
-        info.constant = value
-        info.constraint.suggestedValue = value
-
-        if let row = rows[info.tag.marker] {
-            if row.add(-delta) < 0.0 {
-                infeasibleRows.append(info.tag.marker)
-            }
-
-            if autoSolve {
-                try dualOptimize()
-            }
-
-            return
-        }
-
-        if let otherTag = info.tag.other, let row = rows[otherTag] {
-            if row.add(delta) < 0.0 {
-                infeasibleRows.append(otherTag)
-            }
-
-            if autoSolve {
-                try dualOptimize()
-            }
-
-            return
-        }
-
-        for (s, row) in rows.orderedEntries {
-            let coefficient = row.coefficientFor(info.tag.marker)
-            if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
-                infeasibleRows.append(s)
-            }
-        }
-
-        if autoSolve {
-            try dualOptimize()
-        }
-    }
-
-    /**
-     Update the values of the external solver variables.
-     */
-    public func updateVariables() {
-        for (variable, value) in variableSymbols {
-            if let row = rows[value] {
-                variable.value = row.constant
-            } else {
-                variable.value = 0
-            }
-        }
     }
 
     /// Returns a string representing the internal state of the solver.
@@ -583,7 +598,6 @@ public final class Solver {
         }
     }
 
-
     /**
      * Compute the entering variable for a pivot operation.
      * <p/>
@@ -618,7 +632,6 @@ public final class Solver {
 
         return entering
     }
-
 
     /**
      Get the first Slack or Error symbol in the row.

@@ -39,8 +39,11 @@ class CassowaryTests: XCTestCase {
     func testSimple() throws {
         let solver = Solver()
         let x = Variable("x")
+        let tr = solver.startTransaction()
 
-        try solver.addConstraint(x + 2 == 20)
+        tr.addConstraint(x + 2 == 20)
+
+        try tr.apply()
 
         solver.updateVariables()
         assertIsCloseTo(x, 18)
@@ -50,9 +53,12 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
         let x = Variable("x")
         let y = Variable("y")
+        let tr = solver.startTransaction()
 
-        try solver.addConstraint(x == 20)
-        try solver.addConstraint(x + 2 == y + 10)
+        tr.addConstraint(x == 20)
+        tr.addConstraint(x + 2 == y + 10)
+
+        try tr.apply()
 
         solver.updateVariables()
 
@@ -64,8 +70,12 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
         let x = Variable("x")
         let y = Variable("y")
+        let tr = solver.startTransaction()
 
-        try solver.addConstraint(x == y)
+        tr.addConstraint(x == y)
+
+        try tr.apply()
+
         solver.updateVariables()
 
         assertIsCloseTo(x, y)
@@ -75,11 +85,14 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
         let x = Variable("x")
         let y = Variable("y")
+        let tr = solver.startTransaction()
 
-        try solver.addConstraint(x <= y)
-        try solver.addConstraint(y == x + 3.0)
-        try solver.addConstraint((x == 10.0).setStrength(Strength.WEAK))
-        try solver.addConstraint((y == 10.0).setStrength(Strength.WEAK))
+        tr.addConstraint(x <= y)
+        tr.addConstraint(y == x + 3.0)
+        tr.addConstraint((x == 10.0).setStrength(Strength.WEAK))
+        tr.addConstraint((y == 10.0).setStrength(Strength.WEAK))
+
+        try tr.apply()
 
         solver.updateVariables()
 
@@ -96,7 +109,10 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
         let x = Variable("x")
 
-        try solver.addConstraint((x <= 100).setStrength(Strength.WEAK))
+        try solver.withTransaction {
+            $0.addConstraint((x <= 100).setStrength(Strength.WEAK))
+        }
+
         solver.updateVariables()
 
         assertIsCloseTo(100, x)
@@ -104,36 +120,49 @@ class CassowaryTests: XCTestCase {
         let c10 = x <= 10
         let c20 = x <= 20
 
-        try solver.addConstraint(c10)
-        try solver.addConstraint(c20)
+        try solver.withTransaction {
+            $0.addConstraint(c10)
+            $0.addConstraint(c20)
+        }
 
         solver.updateVariables()
 
         assertIsCloseTo(10, x)
 
-        try solver.removeConstraint(c10)
+        try solver.withTransaction {
+            $0.removeConstraint(c10)
+        }
+
         solver.updateVariables()
 
         assertIsCloseTo(20, x)
 
-        try solver.removeConstraint(c20)
+        try solver.withTransaction {
+            $0.removeConstraint(c20)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(100, x)
 
         let c10again = x <= 10
 
-        try solver.addConstraint(c10again)
-        try solver.addConstraint(c10)
+        try solver.withTransaction {
+            $0.addConstraint(c10again)
+            $0.addConstraint(c10)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(10, x)
 
-        try solver.removeConstraint(c10)
+        try solver.withTransaction {
+            $0.removeConstraint(c10)
+        }
         solver.updateVariables()
         assertIsCloseTo(10, x)
 
-        try solver.removeConstraint(c10again)
+        try solver.withTransaction {
+            $0.removeConstraint(c10again)
+        }
         solver.updateVariables()
         assertIsCloseTo(100, x)
     }
@@ -143,39 +172,51 @@ class CassowaryTests: XCTestCase {
         let x = Variable("x")
         let y = Variable("y")
 
-        try solver.addConstraint((x == 100).setStrength(Strength.WEAK))
-        try solver.addConstraint((y == 120).setStrength(Strength.STRONG))
+        try solver.withTransaction {
+            $0.addConstraint((x == 100).setStrength(Strength.WEAK))
+            $0.addConstraint((y == 120).setStrength(Strength.STRONG))
+        }
 
         let c10 = x <= 10.0
         let c20 = x <= 20.0
 
-        try solver.addConstraint(c10)
-        try solver.addConstraint(c20)
+        try solver.withTransaction {
+            $0.addConstraint(c10)
+            $0.addConstraint(c20)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(10, x)
         assertIsCloseTo(120, y)
 
-        try solver.removeConstraint(c10)
+        try solver.withTransaction {
+            $0.removeConstraint(c10)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(20, x)
         assertIsCloseTo(120, y)
 
         let cxy = x * 2 == y
-        try solver.addConstraint(cxy)
+        try solver.withTransaction {
+            $0.addConstraint(cxy)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(20, x)
         assertIsCloseTo(40, y)
 
-        try solver.removeConstraint(c20)
+        try solver.withTransaction {
+            $0.removeConstraint(c20)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(60, x)
         assertIsCloseTo(120, y)
 
-        try solver.removeConstraint(cxy)
+        try solver.withTransaction {
+            $0.removeConstraint(cxy)
+        }
         solver.updateVariables()
 
         assertIsCloseTo(100, x)
@@ -187,8 +228,10 @@ class CassowaryTests: XCTestCase {
         let x = Variable("x")
 
         do {
-            try solver.addConstraint(x == 10.0)
-            try solver.addConstraint(x == 5.0)
+            try solver.withTransaction {
+                $0.addConstraint(x == 10.0)
+                $0.addConstraint(x == 5.0)
+            }
             solver.updateVariables()
         } catch CassowaryError.unsatisfiableConstraint {
             // An error is expected
@@ -205,8 +248,10 @@ class CassowaryTests: XCTestCase {
         let x = Variable("x")
 
         do {
-            try solver.addConstraint(x >= 10)
-            try solver.addConstraint(x <= 5)
+            try solver.withTransaction {
+                $0.addConstraint(x >= 10)
+                $0.addConstraint(x <= 5)
+            }
             solver.updateVariables()
         } catch CassowaryError.unsatisfiableConstraint {
             // An error is expected
@@ -226,12 +271,14 @@ class CassowaryTests: XCTestCase {
         let z = Variable("z")
 
         do {
-            try solver.addConstraint(w >= 10)
-            try solver.addConstraint(x >= w)
-            try solver.addConstraint(y >= x)
-            try solver.addConstraint(z >= y)
-            try solver.addConstraint(z >= 8)
-            try solver.addConstraint(z <= 4.0)
+            try solver.withTransaction {
+                $0.addConstraint(w >= 10)
+                $0.addConstraint(x >= w)
+                $0.addConstraint(y >= x)
+                $0.addConstraint(z >= y)
+                $0.addConstraint(z >= 8)
+                $0.addConstraint(z <= 4.0)
+            }
             solver.updateVariables()
         } catch let error as CassowaryError {
             // An error is expected
@@ -250,10 +297,12 @@ class CassowaryTests: XCTestCase {
         let xr = Variable("xr")
 
         let solver = Solver()
-        try solver.addConstraint(xr <= 100)
-        try solver.addConstraint(xm * 2 == xl + xr)
-        try solver.addConstraint(xl + 10 <= xr)
-        try solver.addConstraint(0 <= xl)
+        try solver.withTransaction {
+            $0.addConstraint(xr <= 100)
+            $0.addConstraint(xm * 2 == xl + xr)
+            $0.addConstraint(xl + 10 <= xr)
+            $0.addConstraint(0 <= xl)
+        }
 
         solver.updateVariables()
 
@@ -269,13 +318,15 @@ class CassowaryTests: XCTestCase {
         let mid = Variable("mid")
         let right = Variable("right")
 
-        try solver.addConstraint(mid == (left + right) / 2)
-        try solver.addConstraint(right == left + 10)
-        try solver.addConstraint(right <= 100)
-        try solver.addConstraint(left >= 0)
+        try solver.withTransaction {
+            $0.addConstraint(mid == (left + right) / 2)
+            $0.addConstraint(right == left + 10)
+            $0.addConstraint(right <= 100)
+            $0.addConstraint(left >= 0)
 
-        try solver.addEditVariable(variable: mid, strength: Strength.STRONG)
-        try solver.suggestValue(variable: mid, value: 2)
+            $0.addEditVariable(variable: mid, strength: Strength.STRONG)
+            $0.suggestValue(variable: mid, value: 2)
+        }
 
         solver.updateVariables()
 
@@ -290,13 +341,15 @@ class CassowaryTests: XCTestCase {
 
         let solver = Solver()
 
-        try solver.addConstraint(x == y)
+        try solver.withTransaction {
+            $0.addConstraint(x == y)
+        }
 
         solver.updateVariables()
 
         assertIsCloseTo(x, y)
     }
-    
+
     func testTops() throws {
         class Constrainable {
             let top = Variable("top")
@@ -305,71 +358,75 @@ class CassowaryTests: XCTestCase {
                 return top + height
             }
         }
-        
+
         let parent = Constrainable()
         let child = Constrainable()
-        
+
         let solver = Solver()
-        
-        try solver.addConstraint(child.top == parent.top)
-        try solver.addConstraint(child.bottom == parent.bottom)
-        try solver.addEditVariable(variable: child.height, strength: Strength.STRONG)
-        try solver.suggestValue(variable: child.height, value: 24.0)
-        
+
+        try solver.withTransaction {
+            $0.addConstraint(child.top == parent.top)
+            $0.addConstraint(child.bottom == parent.bottom)
+            $0.addEditVariable(variable: child.height, strength: Strength.STRONG)
+            $0.suggestValue(variable: child.height, value: 24.0)
+        }
+
         solver.updateVariables()
-        
+
         assertIsCloseTo(parent.height, 24)
     }
-    
+
     func testAddEditVariable() {
         let v = Variable("test")
         let solver = Solver()
-        
+
         // Shouldn't be able to add with a REQUIRED strength
-        XCTAssertThrowsError(try solver.addEditVariable(variable: v, strength: Strength.REQUIRED))
-        
-        XCTAssertNoThrow(try solver.addEditVariable(variable: v, strength: Strength.STRONG))
-        
+        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.REQUIRED) })
+
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+
         // Should throw a DuplicateEditVariable error.
-        XCTAssertThrowsError(try solver.addEditVariable(variable: v, strength: Strength.STRONG))
+        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
     }
-    
+
     func testRemoveEditVariable() {
         let v = Variable("test")
-        
+
         let solver = Solver()
-        
+
         // Should throw an error- the edit variable hasn't been added yet.
-        XCTAssertThrowsError(try solver.removeEditVariable(v))
-        
-        XCTAssertNoThrow(try solver.addEditVariable(variable: v, strength: Strength.STRONG))
-        XCTAssertNoThrow(try solver.removeEditVariable(v))
+        XCTAssertThrowsError(try solver.withTransaction { $0.removeEditVariable(v) })
+
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.removeEditVariable(v) })
     }
-    
+
     func testSuggestValue() {
         let v = Variable("test")
         let solver = Solver()
-        
+
         // Should throw an error, as it hasn't been added as an edit variable
-        XCTAssertThrowsError(try solver.suggestValue(variable: v, value: 1.0))
-        
-        XCTAssertNoThrow(try solver.addEditVariable(variable: v, strength: Strength.STRONG))
-        XCTAssertNoThrow(try solver.suggestValue(variable: v, value: 1.0))
+        XCTAssertThrowsError(try solver.withTransaction { $0.suggestValue(variable: v, value: 1.0) })
+
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.suggestValue(variable: v, value: 1.0) })
     }
 
     func testGreaterThanOrEqualConstraint() throws {
         let v1 = Variable("v1")
         let v2 = Variable("v2")
         let solver = Solver()
-        
-        try solver.addConstraint(v2 >= v1 + 10)
-        try solver.addEditVariable(variable: v1, strength: Strength.STRONG)
-        try solver.addEditVariable(variable: v2, strength: Strength.MEDIUM)
-        try solver.suggestValue(variable: v2, value: 0)
-        try solver.suggestValue(variable: v1, value: 10)
-        
+
+        try solver.withTransaction {
+            $0.addConstraint(v2 >= v1 + 10)
+            $0.addEditVariable(variable: v1, strength: Strength.STRONG)
+            $0.addEditVariable(variable: v2, strength: Strength.MEDIUM)
+            $0.suggestValue(variable: v2, value: 0)
+            $0.suggestValue(variable: v1, value: 10)
+        }
+
         solver.updateVariables()
-        
+
         XCTAssertEqual(v1.value, 10.0)
         XCTAssertEqual(v2.value, 20.0)
     }
