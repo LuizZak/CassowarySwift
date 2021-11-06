@@ -410,14 +410,14 @@ public final class Solver {
             }
         case .equal:
             if constraint.strength < Strength.REQUIRED {
-                let errplus = createSymbol(type: .error)
-                let errminus = createSymbol(type: .error)
-                marker = errplus
-                other = errminus
-                row.insert(symbol: errplus, coefficient: -1.0) // v = eplus - eminus
-                row.insert(symbol: errminus, coefficient: 1.0) // v - eplus + eminus = 0
-                objective.insert(symbol: errplus, coefficient: constraint.strength)
-                objective.insert(symbol: errminus, coefficient: constraint.strength)
+                let errPlus = createSymbol(type: .error)
+                let errMinus = createSymbol(type: .error)
+                marker = errPlus
+                other = errMinus
+                row.insert(symbol: errPlus, coefficient: -1.0) // v = ePlus - eMinus
+                row.insert(symbol: errMinus, coefficient: 1.0) // v - ePlus + eMinus = 0
+                objective.insert(symbol: errPlus, coefficient: constraint.strength)
+                objective.insert(symbol: errMinus, coefficient: constraint.strength)
             } else {
                 let dummy = createSymbol(type: .dummy)
                 marker = dummy
