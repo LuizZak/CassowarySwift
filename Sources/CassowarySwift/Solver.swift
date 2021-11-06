@@ -117,6 +117,17 @@ public final class Solver {
         }
     }
 
+    /// Returns a string representing the internal state of the solver.
+    public func stateDescription() -> String {
+        var string = ""
+
+        for row in rows.orderedEntries {
+            string += "\(row.key) = \(row.value)\n"
+        }
+
+        return string.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     internal func addConstraint(_ constraint: Constraint) throws {
         if constraintDict[constraint] != nil {
             throw CassowaryError.duplicateConstraint(constraint)
@@ -348,17 +359,6 @@ public final class Solver {
         }
 
         return third
-    }
-
-    /// Returns a string representing the internal state of the solver.
-    internal func stateDescription() -> String {
-        var string = ""
-
-        for row in rows.orderedEntries {
-            string += "\(row.key) = \(row.value)\n"
-        }
-
-        return string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /**
