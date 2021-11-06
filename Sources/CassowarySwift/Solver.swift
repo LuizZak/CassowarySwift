@@ -57,13 +57,13 @@ public final class Solver {
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
-    
+
     private(set) var variableEditInfo: [Variable: EditInfo] = [:]
-    
+
     var variables: [Variable] {
         return Array(variableSymbols.keys)
     }
-    
+
     var constraints: [Constraint] {
         return Array(constraintDict.keys)
     }
@@ -121,7 +121,7 @@ public final class Solver {
     public func stateDescription() -> String {
         var string = ""
 
-        for row in rows.orderedEntries {
+        for row in rows {
             string += "\(row.key) = \(row.value)\n"
         }
 
@@ -269,7 +269,7 @@ public final class Solver {
             return
         }
 
-        for (s, row) in rows.orderedEntries {
+        for (s, row) in rows {
             let coefficient = row.coefficientFor(info.tag.marker)
             if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
                 infeasibleRows.append(s)
@@ -326,23 +326,23 @@ public final class Solver {
         var second: (Symbol, Row)?
         var third: (Symbol, Row)?
 
-        for (s, candidateRow) in rows.orderedEntries {
+        for (s, candidateRow) in rows {
             let c = candidateRow.coefficientFor(marker)
 
             if c == 0.0 {
                 continue
             }
 
+            let r = candidateRow.constant / c
+
             if s.symbolType == .external {
                 third = (s, candidateRow)
             } else if c < 0.0 {
-                let r = -candidateRow.constant / c
-                if r < r1 {
-                    r1 = r
+                if -r < r1 {
+                    r1 = -r
                     first = (s, candidateRow)
                 }
             } else {
-                let r = candidateRow.constant / c
                 if r < r2 {
                     r2 = r
                     second = (s, candidateRow)
@@ -521,7 +521,7 @@ public final class Solver {
      in the tableau and the objective function with the given row.
      */
     private func substitute(symbol: Symbol, row: Row) {
-        for rowEntry in rows.orderedEntries {
+        for rowEntry in rows {
             rowEntry.value.substitute(symbol: symbol, row: row)
 
             if rowEntry.key.symbolType != .external && rowEntry.value.constant < 0.0 {
@@ -583,7 +583,7 @@ public final class Solver {
      * is returned.
      */
     private func getEnteringSymbol(_ objective: Row) -> Symbol? {
-        for cell in objective.cells.orderedEntries {
+        for cell in objective.cells {
             if cell.key.symbolType != .dummy && cell.value < 0.0 {
                 return cell.key
             }
@@ -597,7 +597,7 @@ public final class Solver {
 
         var ratio = Double.greatestFiniteMagnitude
 
-        for (s, currentCell) in row.cells.orderedEntries where s.symbolType != .dummy && currentCell > 0.0 {
+        for (s, currentCell) in row.cells where s.symbolType != .dummy && currentCell > 0.0 {
             let coefficient = objective.coefficientFor(s)
             let r = coefficient / currentCell
             if r < ratio {
@@ -615,7 +615,7 @@ public final class Solver {
      If no such symbol is present, `nil` will be returned.
      */
     private func anyPivotableSymbol(_ row: Row) -> Symbol? {
-        for entry in row.cells.orderedEntries {
+        for entry in row.cells {
             if entry.key.symbolType == .slack || entry.key.symbolType == .error {
                 return entry.key
             }
@@ -638,7 +638,7 @@ public final class Solver {
         var ratio = Double.greatestFiniteMagnitude
         var row: (Symbol, Row)?
 
-        for (key, candidateRow) in rows.orderedEntries where key.symbolType != .external {
+        for (key, candidateRow) in rows where key.symbolType != .external {
             let temp = candidateRow.coefficientFor(entering)
 
             if temp < 0 {

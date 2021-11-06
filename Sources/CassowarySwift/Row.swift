@@ -40,7 +40,7 @@ final class Row: CustomStringConvertible {
     var cells: SymbolOrderedDictionary<Double> = [:]
 
     var description: String {
-        var string = cells.orderedEntries.map {
+        var string = cells.map {
             if $0.value.isApproximately(value: 1.0) {
                 return "\($0.key)"
             }
@@ -110,7 +110,7 @@ final class Row: CustomStringConvertible {
     func insert(other: Row, coefficient: Double = 1.0) {
         add(other.constant * coefficient)
 
-        for (s, value) in other.cells.orderedEntries {
+        for (s, value) in other.cells {
             insert(symbol: s, coefficient: value * coefficient)
         }
     }

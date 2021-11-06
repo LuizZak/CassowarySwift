@@ -1,25 +1,12 @@
 /// An ordered dictionary of symbol-keyed values.
 struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     private var dictionary = [Int: ValueType]()
-    
+
     private(set) var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
     private(set) var keys = [Symbol]()
 
     var count: Int { return keys.count }
-    
-    /// Returns a list of ordered key-value pairs in this ordered dictionary.
-    var orderedEntries: [(key: Symbol, value: ValueType)] {
-        @_transparent
-        get {
-            if _cache.value == nil {
-                _cache.value = keys.map {
-                    (key: $0, value: dictionary[$0.id].unsafelyUnwrapped)
-                }
-            }
-            return _cache.value.unsafelyUnwrapped
-        }
-    }
-    
+
     /// Returns a list of unordered values in this ordered dictionary.
     var unorderedValues: [ValueType] {
         return Array(dictionary.values)
@@ -128,4 +115,50 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
             return OrderedEntriesCache(value: value)
         }
     }
+}
+
+extension SymbolOrderedDictionary: Sequence {
+    #if ORDERED_DICTIONARY_ITERATOR
+
+    var orderedEntries: Iterator {
+        return Iterator(keys: keys, dictionary: dictionary)
+    }
+
+    func makeIterator() -> Iterator {
+        return Iterator(keys: keys, dictionary: dictionary)
+    }
+
+    struct Iterator: IteratorProtocol {
+        typealias Element = (key: Symbol, value: Value)
+
+        var keyIterator: Array<Symbol>.Iterator
+        var dictionary: [Int: Value]
+
+        fileprivate init(keys: [Symbol], dictionary: [Int: Value]) {
+            keyIterator = keys.makeIterator()
+            self.dictionary = dictionary
+        }
+
+        mutating func next() -> (key: Symbol, value: ValueType)? {
+            guard let next = keyIterator.next() else {
+                return nil
+            }
+
+            return (key: next, value: dictionary[next.id].unsafelyUnwrapped)
+        }
+    }
+
+    #else
+
+    func makeIterator() -> IndexingIterator<[(key: Symbol, value: ValueType)]> {
+        if _cache.value == nil {
+            _cache.value = keys.map {
+                (key: $0, value: dictionary[$0.id].unsafelyUnwrapped)
+            }
+        }
+
+        return _cache.value.unsafelyUnwrapped.makeIterator()
+    }
+
+    #endif
 }

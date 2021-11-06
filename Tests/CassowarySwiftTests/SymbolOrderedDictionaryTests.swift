@@ -24,8 +24,9 @@ class SymbolOrderedDictionaryTests: XCTestCase {
         dict.removeValue(forKey: Symbol(id: 2, symbolType: .external))
         dict.removeValue(forKey: Symbol(id: 4, symbolType: .external))
 
-        XCTAssertEqual(dict.orderedEntries.count, 1)
-        XCTAssertTrue(dict.orderedEntries[0] == (Symbol(id: 3, symbolType: .external), "3"), dict.orderedEntries.description)
+        let ordered = Array(dict)
+        XCTAssertEqual(ordered.count, 1)
+        XCTAssertTrue(ordered[0] == (Symbol(id: 3, symbolType: .external), "3"), ordered.description)
     }
 
     func testRemoveValueForKey_performance() {
