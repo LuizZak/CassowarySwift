@@ -55,8 +55,8 @@ public enum SolverSerializer {
         }
 
         // Extract constraints
-        for constraint in try json[path: "constraints"].array {
-            transaction.addConstraint(try deserializeConstraint(constraint, { variablesDict[$0] }))
+        for index in try 0..<json[path: "constraints"].array.count {
+            transaction.addConstraint(try deserializeConstraint(json[path: "constraints", index], { variablesDict[$0] }, reduce: options.reduceExpressions))
         }
 
         try transaction.apply()
@@ -118,7 +118,7 @@ public enum SolverSerializer {
     /// Deserializes previously serialized transaction data.
     /// This method assumes all variables referenced by the data have been
     /// referenced before in the solver, otherwise creating them as needed.
-    public static func deserialize(data: Data, transaction: SolverTransaction) throws {
+    public static func deserialize(data: Data, transaction: SolverTransaction, options: DeserializingOptions = .init()) throws {
         let solver = transaction.solver
 
         var existingVars = Dictionary(solver.variables.map { ($0.name, $0) }) { $1 }
@@ -151,12 +151,22 @@ public enum SolverSerializer {
         for change in changes {
             switch try change[path: "change"].string {
             case "addConstraint":
-                let constraint = try deserializeConstraint(change[path: "constraint"].json, _resolveOrCreateVar)
+                let constraint =
+                    try deserializeConstraint(
+                        change[path: "constraint"],
+                        _resolveOrCreateVar,
+                        reduce: options.reduceExpressions
+                    )
 
                 transaction.addConstraint(constraint)
 
             case "removeConstraint":
-                let constraint = try deserializeConstraint(change[path: "constraint"].json, _resolveOrCreateVar)
+                let constraint =
+                    try deserializeConstraint(
+                        change[path: "constraint"],
+                        _resolveOrCreateVar,
+                        reduce: options.reduceExpressions
+                    )
 
                 for current in solver.constraints {
                     if constraint.isEquivalent(to: current) {
@@ -200,7 +210,7 @@ public enum SolverSerializer {
         }
     }
 
-    private static func deserializeConstraint(_ constraint: JSON, _ variableLookup: (String) -> Variable?) throws -> Constraint {
+    private static func deserializeConstraint(_ constraint: JSONSubscriptAccess, _ variableLookup: (String) -> Variable?, reduce: Bool) throws -> Constraint {
         let op = try constraint[path: "op"].decode(RelationalOperator.self)
         let strength = try constraint[path: "strength"].decode(Double.self)
 
@@ -218,9 +228,11 @@ public enum SolverSerializer {
 
         let expression = Expression(terms: terms, constant: constant)
 
-        let constraint = Constraint(expr: expression, op: op, strength: strength)
+        if reduce {
+            return Constraint(expr: expression, op: op, strength: strength)
+        }
 
-        return constraint
+        return Constraint(reducedExpr: expression, op: op, strength: strength)
     }
 
     /// Specifies options for deserializing
@@ -230,8 +242,17 @@ public enum SolverSerializer {
         /// different values.
         public var allowDuplicatedVariables: Bool
 
-        public init(allowDuplicatedVariables: Bool = false) {
+        /// If `true`, constraint expressions are reduced prior to creation,
+        /// resulting in less repetition of terms in constraints.
+        ///
+        /// If a constraint was serialized internally and was not modified, it
+        /// is safe to use unreduced as constraints are reduced at creation
+        /// time.
+        public var reduceExpressions: Bool
+
+        public init(allowDuplicatedVariables: Bool = false, reduceExpressions: Bool = false) {
             self.allowDuplicatedVariables = allowDuplicatedVariables
+            self.reduceExpressions = reduceExpressions
         }
     }
 

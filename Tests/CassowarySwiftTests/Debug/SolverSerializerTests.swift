@@ -239,6 +239,124 @@ class SolverSerializerTests: XCTestCase {
         XCTAssertEqual(variables[0].name, "v1")
     }
 
+    func testDeserialize_reduceExpressions_true() throws {
+        let json: JSON = [
+            "constraints": [
+                [
+                    "expression": [
+                        "constant": 0.0,
+                        "terms": [
+                            [
+                                "coefficient": 1.0,
+                                "variable": "v1"
+                            ],
+                            [
+                                "coefficient": -1.0,
+                                "variable": "v3"
+                            ],
+                            [
+                                "coefficient": 0.5,
+                                "variable": "v2"
+                            ],
+                            [
+                                "coefficient": -0.5,
+                                "variable": "v1"
+                            ]
+                        ]
+                    ],
+                    "op": "equal",
+                    "strength": 1001001000.0
+                ]
+            ],
+            "varEdit": [],
+            "variables": [
+                [
+                    "name": "v1",
+                    "value": 45.0
+                ],
+                [
+                    "name": "v2",
+                    "value": 75.0
+                ],
+                [
+                    "name": "v3",
+                    "value": 60.0
+                ]
+            ]
+        ]
+        let (solver, _) = try SolverSerializer.deserialize(data: json.asData(), options: .init(reduceExpressions: true))
+
+        XCTAssertEqual(solver.constraints.count, 1)
+        let expression = solver.constraints[0].expression
+        XCTAssertEqual(expression.terms.count, 3)
+        XCTAssertEqual(expression.terms[0].variable.name, "v1")
+        XCTAssertEqual(expression.terms[0].coefficient, 0.5)
+        XCTAssertEqual(expression.terms[1].variable.name, "v3")
+        XCTAssertEqual(expression.terms[1].coefficient, -1.0)
+        XCTAssertEqual(expression.terms[2].variable.name, "v2")
+        XCTAssertEqual(expression.terms[2].coefficient, 0.5)
+    }
+
+    func testDeserialize_reduceExpressions_false() throws {
+        let json: JSON = [
+            "constraints": [
+                [
+                    "expression": [
+                        "constant": 0.0,
+                        "terms": [
+                            [
+                                "coefficient": 1.0,
+                                "variable": "v1"
+                            ],
+                            [
+                                "coefficient": -1.0,
+                                "variable": "v3"
+                            ],
+                            [
+                                "coefficient": 0.5,
+                                "variable": "v2"
+                            ],
+                            [
+                                "coefficient": -0.5,
+                                "variable": "v1"
+                            ]
+                        ]
+                    ],
+                    "op": "equal",
+                    "strength": 1001001000.0
+                ]
+            ],
+            "varEdit": [],
+            "variables": [
+                [
+                    "name": "v1",
+                    "value": 45.0
+                ],
+                [
+                    "name": "v2",
+                    "value": 75.0
+                ],
+                [
+                    "name": "v3",
+                    "value": 60.0
+                ]
+            ]
+        ]
+        let (solver, _) = try SolverSerializer.deserialize(data: json.asData(), options: .init(reduceExpressions: false))
+
+        XCTAssertEqual(solver.constraints.count, 1)
+        let expression = solver.constraints[0].expression
+        XCTAssertEqual(expression.terms.count, 4)
+        XCTAssertEqual(expression.terms[0].variable.name, "v1")
+        XCTAssertEqual(expression.terms[0].coefficient, 1.0)
+        XCTAssertEqual(expression.terms[1].variable.name, "v3")
+        XCTAssertEqual(expression.terms[1].coefficient, -1.0)
+        XCTAssertEqual(expression.terms[2].variable.name, "v2")
+        XCTAssertEqual(expression.terms[2].coefficient, 0.5)
+        XCTAssertEqual(expression.terms[3].variable.name, "v1")
+        XCTAssertEqual(expression.terms[3].coefficient, -0.5)
+    }
+
     func testDeserialize_allowDuplicatedVariables_avoidDoubleEdit() throws {
         let json: JSON = [
             "constraints": [],

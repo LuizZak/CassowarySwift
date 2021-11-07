@@ -87,6 +87,15 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
         self.init(expr: other.expression, op: other.op, strength: strength)
     }
 
+    /// Create a constraint with the given expression, operator and strength.
+    /// The expression is assumed to have been reduced previously, so no attempts
+    /// at reduction are made at creation time.
+    internal init(reducedExpr expr: Expression, op: RelationalOperator, strength: Double) {
+        self.expression = expr
+        self.op = op
+        self.strength = Strength.clip(strength)
+    }
+
     private static func reduce(_ expr: Expression) -> Expression {
         var vars: [Variable: Double] = [:]
 

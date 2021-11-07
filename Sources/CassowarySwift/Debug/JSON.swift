@@ -1,7 +1,13 @@
 import Foundation
 
+/// A protocol for `JSON` and `JSONSubscriptAccess` exposing common JSON operations.
+protocol JSONLike {
+    func decode<T: Decodable>(_ decodable: T.Type) throws -> T
+    func asData() throws -> Data
+}
+
 /// A JSON value.
-enum JSON: Codable {
+enum JSON: JSONLike, Codable {
     /// A dictionary of string-keyed JSON values
     case dictionary([String: JSON])
     /// An array of JSON values
@@ -465,7 +471,7 @@ extension JSON: Collection {
             }
         }
 
-        return .value(json)
+        return .value(json, path: accesses)
     }
 }
 
@@ -485,8 +491,8 @@ extension Int: JSONIndexer {
     }
 }
 
-enum JSONSubscriptAccess: Equatable {
-    case value(JSON)
+enum JSONSubscriptAccess: JSONLike, Equatable {
+    case value(JSON, path: [JSONAccess])
     case notAnArray([JSONAccess])
     case notADictionary([JSONAccess])
     case keyNotFound([JSONAccess])
@@ -496,7 +502,7 @@ enum JSONSubscriptAccess: Equatable {
     var json: JSON {
         get throws {
             switch self {
-            case .value(let json):
+            case .value(let json, _):
                 return json
 
             case let .keyNotFound(path),
@@ -513,12 +519,12 @@ enum JSONSubscriptAccess: Equatable {
     var number: Double {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let double = v.double {
                     return double
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .number, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -534,12 +540,12 @@ enum JSONSubscriptAccess: Equatable {
     var integer: Int {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let double = v.double {
                     return Int(double)
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .number, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -555,12 +561,12 @@ enum JSONSubscriptAccess: Equatable {
     var string: String {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let string = v.string {
                     return string
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .string, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -576,12 +582,12 @@ enum JSONSubscriptAccess: Equatable {
     var bool: Bool {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let bool = v.bool {
                     return bool
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .bool, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -594,15 +600,15 @@ enum JSONSubscriptAccess: Equatable {
 
     /// Attempts to read this subscript access as an array value, throwing an
     /// error if the keypath is invalid, or if the value is not an array.
-    var array: [JSON] {
+    var array: [JSONSubscriptAccess] {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let array = v.array {
-                    return array
+                    return array.enumerated().map { .value($1, path: path + [.index($0)]) }
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .array, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -615,15 +621,17 @@ enum JSONSubscriptAccess: Equatable {
 
     /// Attempts to read this subscript access as a dictionary value, throwing an
     /// error if the keypath is invalid, or if the value is not a dictionary.
-    var dictionary: [String: JSON] {
+    var dictionary: [String: JSONSubscriptAccess] {
         get throws {
             switch self {
-            case .value(let v):
+            case .value(let v, let path):
                 if let dictionary = v.dictionary {
-                    return dictionary
+                    return Dictionary(dictionary.map {
+                        ($0, .value($1, path: path + [.dictionary($0)]))
+                    }, uniquingKeysWith: { $1 })
                 }
 
-                throw Error.invalidValueType
+                throw Error.invalidValueType(expected: .dictionary, found: v.type, at: path)
 
             case let .keyNotFound(path),
                  let .notADictionary(path),
@@ -638,7 +646,7 @@ enum JSONSubscriptAccess: Equatable {
     var isNull: Bool {
         get {
             switch self {
-            case .value(let v):
+            case .value(let v, _):
                 return v == .null
 
             default:
@@ -658,9 +666,40 @@ enum JSONSubscriptAccess: Equatable {
         }
     }
 
+    subscript(path path: JSONIndexer...) -> JSONSubscriptAccess {
+        guard case .value(var json, let current) = self else {
+            return self
+        }
+
+        let accesses = path.map { $0.jsonIndex }
+
+        for (i, access) in accesses.enumerated() {
+            switch access {
+            case .dictionary(let key):
+                if let value = json[key] {
+                    json = value
+                } else if json.type == .dictionary {
+                    return .keyNotFound(current + Array(accesses[...i]))
+                } else {
+                    return .notADictionary(current + Array(accesses[..<i]))
+                }
+            case .index(let index):
+                if let array = json.array, index >= 0 && index < array.count {
+                    json = array[index]
+                } else if json.type == .array {
+                    return .keyNotFound(current + Array(accesses[...i]))
+                } else {
+                    return .notAnArray(current + Array(accesses[..<i]))
+                }
+            }
+        }
+
+        return .value(json, path: current + accesses)
+    }
+
     func decode<T: Decodable>(_ decodable: T.Type = T.self) throws -> T {
         switch self {
-        case .value(let v):
+        case .value(let v, _):
             return try v.decode()
 
         case let .keyNotFound(path),
@@ -671,14 +710,56 @@ enum JSONSubscriptAccess: Equatable {
         }
     }
 
-    enum JSONAccess: Equatable {
-        case index(Int)
-        case dictionary(String)
+    func asData() throws -> Data {
+        switch self {
+        case .value(let v, _):
+            return try v.asData()
+
+        case let .keyNotFound(path),
+             let .notADictionary(path),
+             let .notAnArray(path):
+
+            throw Error.invalidPath(path)
+        }
     }
 
-    enum Error: Swift.Error {
+    enum JSONAccess: Hashable, CustomStringConvertible {
+        case index(Int)
+        case dictionary(String)
+
+        var description: String {
+            switch self {
+            case .index(let i):
+                return "[\(i)]"
+            case .dictionary(let str):
+                return ".\(str)"
+            }
+        }
+    }
+
+    enum Error: Swift.Error, CustomStringConvertible {
         case invalidPath([JSONAccess])
-        case invalidValueType
+        case invalidValueType(expected: JSON.JSONType, found: JSON.JSONType, at: [JSONAccess])
+
+        var description: String {
+            switch self {
+            case .invalidPath(let path):
+                if let last = path.last {
+                    let base = path.dropLast()
+
+                    switch last {
+                    case .dictionary(let key):
+                        return "JSON dictionary key not found: \"\(key)\" at: <root>\(base.map(\.description).joined())"
+                    case .index(let index):
+                        return "JSON array index not found: \(index) at: <root>\(base.map(\.description).joined())"
+                    }
+                }
+
+                return "JSON Path not found: <root>\(path.map(\.description).joined())"
+            case .invalidValueType(let expected, let found, let path):
+                return "Expected value type on <root>\(path.map(\.description).joined()) \(expected), found \(found)."
+            }
+        }
     }
 }
 
