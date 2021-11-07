@@ -41,13 +41,6 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     }
 
     @_transparent
-    init(_ other: SymbolOrderedDictionary<ValueType>) {
-        self.keys = other.keys
-        self.dictionary = other.dictionary
-        self._cache = other._cache
-    }
-
-    @_transparent
     private init(keys: [Symbol], dictionary: [Int: ValueType]) {
         self.keys = keys
         self.dictionary = dictionary
@@ -139,20 +132,19 @@ extension SymbolOrderedDictionary: Sequence {
                 return nil
             }
 
-            return (key: next, value: dictionary[next.id].unsafelyUnwrapped)
+            return (key: next, value: dictionary[next.id]!)
         }
     }
 
     #else
 
     func makeIterator() -> IndexingIterator<[(key: Symbol, value: ValueType)]> {
-        if _cache.value == nil {
-            _cache.value = keys.map {
-                (key: $0, value: dictionary[$0.id].unsafelyUnwrapped)
-            }
+        let cached = _cache.value ?? keys.map {
+            (key: $0, value: dictionary[$0.id]!)
         }
+        _cache.value = cached
 
-        return _cache.value.unsafelyUnwrapped.makeIterator()
+        return cached.makeIterator()
     }
 
     #endif
