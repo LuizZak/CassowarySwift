@@ -128,8 +128,9 @@ public final class Solver {
         return string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    internal func addConstraint(_ constraint: Constraint) throws {
-        if constraintDict[constraint] != nil {
+    @discardableResult
+    internal func addConstraint(_ constraint: Constraint) throws -> Tag {
+        if hasConstraint(constraint) {
             throw CassowaryError.duplicateConstraint(constraint)
         }
 
@@ -146,22 +147,23 @@ public final class Solver {
         if autoSolve {
             try optimize(objective: objective)
         }
+
+        return tag
     }
 
     /// Remove a constraint from the solver
     internal func removeConstraint(_ constraint: Constraint) throws {
-        guard let tag = constraintDict[constraint] else {
+        guard let tag = constraintDict.removeValue(forKey: constraint) else {
             throw CassowaryError.unknownConstraint(constraint)
         }
 
-        constraintDict[constraint] = nil
         removeConstraintEffects(constraint: constraint, tag: tag)
         if rows.removeValue(forKey: tag.marker) == nil {
             guard let (leaving, row) = getMarkerLeavingRow(marker: tag.marker) else {
                 throw CassowaryError.internalSolver("Internal solver error")
             }
 
-            rows[leaving] = nil
+            rows.removeValue(forKey: leaving)
             row.solveFor(leaving, tag.marker)
             substitute(symbol: tag.marker, row: row)
         }
@@ -193,19 +195,21 @@ public final class Solver {
             throw CassowaryError.requiredFailure
         }
 
-        var terms = [Term]()
-        terms.append(Term(variable: variable))
-        let constraint = EditConstraint(expr: Expression(terms: terms), op: .equal, strength: clippedStrength)
+        let constraint =
+            EditConstraint(
+                expr: Expression(term: Term(variable: variable)),
+                op: .equal,
+                strength: clippedStrength
+            )
 
         do {
-            try addConstraint(constraint)
+            let tag = try addConstraint(constraint)
+
+            let info = EditInfo(constraint: constraint, tag: tag, constant: 0.0)
+            variableEditInfo[variable] = info
         } catch let error as CassowaryError {
             print(error)
         }
-
-        // TODO: Check if tag can be nil
-        let info = EditInfo(constraint: constraint, tag: constraintDict[constraint]!, constant: 0.0)
-        variableEditInfo[variable] = info
     }
 
     /**
@@ -213,7 +217,7 @@ public final class Solver {
      Throws an error if the variable does not have an edit constraint
      */
     internal func removeEditVariable(_ variable: Variable) throws {
-        guard let edit = variableEditInfo[variable] else {
+        guard let edit = variableEditInfo.removeValue(forKey: variable) else {
             throw CassowaryError.unknownEditVariable
         }
 
@@ -222,8 +226,6 @@ public final class Solver {
         } catch {
             print(error)
         }
-
-        variableEditInfo[variable] = nil
     }
 
     /// Checks if the solver has an edit constraint for the provided variable.
@@ -286,7 +288,7 @@ public final class Solver {
             return subject
         }
 
-        if Solver.allDummies(row: row) {
+        if row.allDummies() {
             if !row.constant.isNearZero {
                 throw CassowaryError.unsatisfiableConstraint(constraint, Array(constraintDict.keys))
             } else {
@@ -471,9 +473,7 @@ public final class Solver {
      * This will return false if the constraint cannot be satisfied.
      */
     private func addWithArtificialVariable(row: Row) throws -> Bool {
-
         // Create and add the artificial variable to the tableau
-
         let art = createSymbol(type: .slack)
         rows[art] = Row(row)
 
@@ -495,7 +495,7 @@ public final class Solver {
                 return success
             }
 
-            guard let entering = anyPivotableSymbol(rowPtr) else {
+            guard let entering = rowPtr.anyPivotableSymbol() else {
                 return false // unsatisfiable (will this ever happen?)
             }
 
@@ -544,7 +544,7 @@ public final class Solver {
      */
     private func optimize(objective: Row) throws {
         while true {
-            guard let entering = getEnteringSymbol(objective) else {
+            guard let entering = objective.getEnteringSymbol() else {
                 return
             }
 
@@ -561,35 +561,18 @@ public final class Solver {
 
     private func dualOptimize() throws {
         while let leaving = infeasibleRows.popLast() {
-            if let row = rows[leaving], row.constant < 0.0 {
-                guard let entering = getDualEnteringSymbol(row) else {
-                    throw CassowaryError.internalSolver("Internal solver error")
-                }
-
-                rows[leaving] = nil
-                row.solveFor(leaving, entering)
-                substitute(symbol: entering, row: row)
-                rows[entering] = row
+            guard let row = rows[leaving], row.constant < 0.0 else {
+                continue
             }
-        }
-    }
-
-    /**
-     * Compute the entering variable for a pivot operation.
-     * <p/>
-     * This method will return first symbol in the objective function which
-     * is non-dummy and has a coefficient less than zero. If no symbol meets
-     * the criteria, it means the objective function is at a minimum, and `nil`
-     * is returned.
-     */
-    private func getEnteringSymbol(_ objective: Row) -> Symbol? {
-        for cell in objective.cells {
-            if cell.key.symbolType != .dummy && cell.value < 0.0 {
-                return cell.key
+            guard let entering = getDualEnteringSymbol(row) else {
+                throw CassowaryError.internalSolver("Internal solver error")
             }
-        }
 
-        return nil
+            rows.removeValue(forKey: leaving)
+            row.solveFor(leaving, entering)
+            substitute(symbol: entering, row: row)
+            rows[entering] = row
+        }
     }
 
     private func getDualEnteringSymbol(_ row: Row) -> Symbol? {
@@ -610,21 +593,6 @@ public final class Solver {
     }
 
     /**
-     Get the first Slack or Error symbol in the row.
-
-     If no such symbol is present, `nil` will be returned.
-     */
-    private func anyPivotableSymbol(_ row: Row) -> Symbol? {
-        for entry in row.cells {
-            if entry.key.symbolType == .slack || entry.key.symbolType == .error {
-                return entry.key
-            }
-        }
-
-        return nil
-    }
-
-    /**
      Compute the row which holds the exit symbol for a pivot.
 
      This documentation is copied from the C++ version and is outdated
@@ -640,13 +608,14 @@ public final class Solver {
 
         for (key, candidateRow) in rows where key.symbolType != .external {
             let temp = candidateRow.coefficientFor(entering)
+            guard temp < 0 else {
+                continue
+            }
 
-            if temp < 0 {
-                let tempRatio = -candidateRow.constant / temp
-                if tempRatio < ratio {
-                    ratio = tempRatio
-                    row = (key, candidateRow)
-                }
+            let tempRatio = -candidateRow.constant / temp
+            if tempRatio < ratio {
+                ratio = tempRatio
+                row = (key, candidateRow)
             }
         }
 
@@ -671,12 +640,5 @@ public final class Solver {
     private func createSymbol(type: SymbolType) -> Symbol {
         nextSymbolId = nextSymbolId &+ 1
         return Symbol(id: nextSymbolId, symbolType: type)
-    }
-
-    /**
-     Test whether a row is composed of all dummy variables.
-     */
-    private static func allDummies(row: Row) -> Bool {
-        return row.cells.keys.allSatisfy { $0.symbolType == .dummy }
     }
 }

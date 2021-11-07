@@ -201,6 +201,45 @@ final class Row: CustomStringConvertible {
             insert(other: row, coefficient: coeff)
         }
     }
+
+    /**
+     * Compute the entering variable for a pivot operation.
+     * <p/>
+     * This method will return first symbol in the row which is non-dummy and
+     * has a coefficient less than zero. If no symbol meets the criteria, it
+     * means the objective function is at a minimum, and `nil` is returned.
+     */
+    func getEnteringSymbol() -> Symbol? {
+        for cell in cells {
+            if cell.key.symbolType != .dummy && cell.value < 0.0 {
+                return cell.key
+            }
+        }
+
+        return nil
+    }
+
+    /**
+     Get the first Slack or Error symbol in this row.
+
+     If no such symbol is present, `nil` will be returned.
+     */
+    func anyPivotableSymbol() -> Symbol? {
+        for entry in cells {
+            if entry.key.symbolType == .slack || entry.key.symbolType == .error {
+                return entry.key
+            }
+        }
+
+        return nil
+    }
+
+    /**
+     Test whether this row is composed of all dummy variables.
+     */
+    func allDummies() -> Bool {
+        return cells.keys.allSatisfy { $0.symbolType == .dummy }
+    }
 }
 
 // MARK: Equatable

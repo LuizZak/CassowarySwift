@@ -34,6 +34,7 @@
 /**
  This is a class that describes a constraint placed on a number of variables in the solver system.
  */
+
 public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
     internal var _debugDesc: String?
     internal var debugDescription: String {
