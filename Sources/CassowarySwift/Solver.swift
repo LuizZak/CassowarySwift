@@ -53,7 +53,7 @@ public final class Solver {
     private var nextSymbolId: Int = 0
     private var constraintDict: [Constraint: Tag] = [:]
     private var rows = SymbolOrderedDictionary<Row>()
-    private var variableSymbols: [Variable: Symbol] = [:]
+    private var variableSymbols: [Variable: (Symbol, refCount: Int)] = [:]
     private var infeasibleRows = [Symbol]()
     private var objective = Row()
     private var artificial: Row?
@@ -108,7 +108,7 @@ public final class Solver {
      Update the values of the external solver variables.
      */
     public func updateVariables() {
-        for (variable, symbol) in variableSymbols {
+        for (variable, (symbol, _)) in variableSymbols {
             if let row = rows[symbol] {
                 variable.value = row.constant
             } else {
@@ -155,6 +155,16 @@ public final class Solver {
     internal func removeConstraint(_ constraint: Constraint) throws {
         guard let tag = constraintDict.removeValue(forKey: constraint) else {
             throw CassowaryError.unknownConstraint(constraint)
+        }
+
+        for term in constraint.expression.terms where !term.coefficient.isNearZero {
+            let variable = term.variable
+
+            variableSymbols[variable]?.refCount -= 1
+
+            if variableSymbols[variable]?.refCount ?? 0 <= 0 {
+                variableSymbols.removeValue(forKey: variable)
+            }
         }
 
         removeConstraintEffects(constraint: constraint, tag: tag)
@@ -388,7 +398,7 @@ public final class Solver {
         var other: Symbol?
 
         for term in expression.terms where !term.coefficient.isNearZero {
-            let symbol = getVarSymbol(term.variable)
+            let symbol = createVarSymbol(term.variable)
 
             if let otherRow = rows[symbol] {
                 row.insert(other: otherRow, coefficient: term.coefficient)
@@ -622,17 +632,17 @@ public final class Solver {
         return row
     }
 
-    /**
-     * Get the symbol for the given variable.
-     * <p/>
-     * If a symbol does not exist for the variable, one will be created.
-     */
-    private func getVarSymbol(_ variable: Variable) -> Symbol {
-        if let symbol = variableSymbols[variable] {
+    /// Creates a new symbol for a given variable.
+    ///
+    /// If a symbol already exists for the given variable, the reference count
+    /// for the variable gets incremented and the existing is returned.
+    private func createVarSymbol(_ variable: Variable) -> Symbol {
+        if let (symbol, _) = variableSymbols[variable] {
+            variableSymbols[variable]?.refCount += 1
             return symbol
         } else {
             let symbol = createSymbol(type: .external)
-            variableSymbols[variable] = symbol
+            variableSymbols[variable] = (symbol, 1)
             return symbol
         }
     }

@@ -93,7 +93,6 @@ class PerformanceTests: XCTestCase {
                         let expectedValue = try v[path: "value"].number
 
                         guard let solverVar = varDict[varName] else {
-                            // TODO: Should throw error probably?
                             continue
                         }
 
