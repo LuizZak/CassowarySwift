@@ -120,6 +120,9 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
         guard strength == other.strength else {
             return false
         }
+        guard op == other.op else {
+            return false
+        }
         guard expression.constant == other.expression.constant else {
             return false
         }

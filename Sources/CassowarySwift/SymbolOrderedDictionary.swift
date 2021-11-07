@@ -2,7 +2,7 @@
 
 typealias SymbolOrderedDictionary<ValueType> = Dictionary<Symbol, ValueType>
 
-#else
+#else // UNORDERED_DICTIONARY
 
 /// An ordered dictionary of symbol-keyed values.
 struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
@@ -134,7 +134,7 @@ extension SymbolOrderedDictionary: Sequence {
         }
     }
 
-    #else
+    #else // ORDERED_DICTIONARY_ITERATOR
 
     func makeIterator() -> IndexingIterator<[(key: Symbol, value: ValueType)]> {
         let cached = _cache.value ?? keys.map {
@@ -145,7 +145,7 @@ extension SymbolOrderedDictionary: Sequence {
         return cached.makeIterator()
     }
 
-    #endif
+    #endif // ORDERED_DICTIONARY_ITERATOR
 }
 
 extension SymbolOrderedDictionary: Collection {
@@ -173,4 +173,4 @@ extension SymbolOrderedDictionary: Collection {
     }
 }
 
-#endif
+#endif // UNORDERED_DICTIONARY

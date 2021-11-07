@@ -32,8 +32,6 @@ public enum SolverSerializer {
             return $1
         }
 
-        let variables = variablesDict.values.sorted { $0.name < $1.name }
-
         // Extract edit variable information
         var visitedVariableNames: Set<String> = []
         for editInfo in try json[path: "varEdit"].array {
@@ -65,7 +63,7 @@ public enum SolverSerializer {
 
         solver.updateVariables()
 
-        return (solver, variables)
+        return (solver, variablesDict.values.sorted { $0.name < $1.name })
     }
 
     /// Serializes the changes encoded in a transaction.
@@ -123,7 +121,7 @@ public enum SolverSerializer {
     public static func deserialize(data: Data, transaction: SolverTransaction) throws {
         let solver = transaction.solver
 
-        var created: [String: Variable] = [:]
+        var existingVars = Dictionary(solver.variables.map { ($0.name, $0) }) { $1 }
 
         /// Resolves a variable from a referenced constraint, returning an
         /// existing variable from the transaction's solver, or the current list
@@ -131,13 +129,7 @@ public enum SolverSerializer {
         /// If no variable with a matching name was found, `nil` is returned,
         /// instead.
         func _resolveExistingVar(name: String) -> Variable? {
-            for v in solver.variables {
-                if v.name == name {
-                    return v
-                }
-            }
-
-            return created[name]
+            return existingVars[name]
         }
 
         /// Resolves a variable from a referenced constraint, returning an
@@ -148,7 +140,7 @@ public enum SolverSerializer {
                 return existing
             }
             let new = Variable(name)
-            created[name] = new
+            existingVars[name] = new
             return new
         }
 

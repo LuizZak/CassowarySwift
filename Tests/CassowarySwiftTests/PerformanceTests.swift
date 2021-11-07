@@ -23,6 +23,31 @@ class PerformanceTests: XCTestCase {
             }
         }
     }
+
+    func testPerformance_transactions() throws {
+        let testFixturePath = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("PerformanceTestFixture_transactions")
+            .appendingPathExtension("json")
+        let data = try Data(contentsOf: testFixturePath)
+
+        let transactions = try JSONDecoder().decode([JSON].self, from: data).map { try $0.asData() }
+
+        measure {
+            let solver = Solver()
+
+            do {
+                for next in transactions {
+                    let tr = solver.startTransaction()
+                    try SolverSerializer.deserialize(data: next, transaction: tr)
+                    try tr.apply()
+                }
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
 }
 
-#endif
+#endif // PERFORMANCE_TESTS
