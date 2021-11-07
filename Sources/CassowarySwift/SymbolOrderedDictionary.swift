@@ -11,19 +11,15 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
     private(set) var _cache: OrderedEntriesCache = OrderedEntriesCache(value: nil)
     private(set) var keys = [Symbol]()
 
-    @_transparent
     var count: Int { return keys.count }
 
     /// Returns a list of unordered values in this ordered dictionary.
-    @_transparent
     var values: Dictionary<Int, ValueType>.Values {
         return dictionary.values
     }
 
     subscript(key: Symbol) -> ValueType? {
-        @_transparent
         get { return self.dictionary[key.id] }
-        @_transparent
         set {
             if let v = newValue {
                 updateValue(v, forKey: key)
@@ -31,16 +27,17 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
                 removeValue(forKey: key)
             }
         }
+        _modify {
+            yield &self.dictionary[key.id]
+        }
     }
 
-    @_transparent
     init(dictionaryLiteral elements: (Symbol, ValueType)...) {
         for (k, v) in elements {
             self[k] = v
         }
     }
 
-    @_transparent
     private init(keys: [Symbol], dictionary: [Int: ValueType]) {
         self.keys = keys
         self.dictionary = dictionary
@@ -87,7 +84,6 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
         return SymbolOrderedDictionary<T>(keys: keys, dictionary: newValues)
     }
 
-    @_transparent
     func index(forKey key: Symbol) -> Int? {
         return keys.firstIndex { $0 == key }
     }
@@ -106,6 +102,8 @@ struct SymbolOrderedDictionary<ValueType>: ExpressibleByDictionaryLiteral {
 }
 
 extension SymbolOrderedDictionary: Sequence {
+    typealias Element = (key: Symbol, value: ValueType)
+
     #if ORDERED_DICTIONARY_ITERATOR
 
     var orderedEntries: Iterator {
@@ -148,6 +146,31 @@ extension SymbolOrderedDictionary: Sequence {
     }
 
     #endif
+}
+
+extension SymbolOrderedDictionary: Collection {
+    typealias Index = Int
+
+    subscript(position: Int) -> (key: Symbol, value: ValueType) {
+        get {
+            let key = keys[position]
+            return (key, dictionary[key.id]!)
+        }
+    }
+
+    var startIndex: Int { 0 }
+
+    var endIndex: Int { keys.count }
+
+    var isEmpty: Bool { keys.isEmpty }
+
+    var underestimatedCount: Int { keys.underestimatedCount }
+
+    func index(after i: Int) -> Int {
+        assert(i < endIndex)
+
+        return i + 1
+    }
 }
 
 #endif

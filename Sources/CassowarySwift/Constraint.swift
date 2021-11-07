@@ -88,8 +88,6 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
     }
 
     private static func reduce(_ expr: Expression) -> Expression {
-        // TODO: Test whether changing this from an OrderedDictionary to a simple
-        // dictionary impacts the solver negatively.
         var vars: [Variable: Double] = [:]
 
         for term in expr.terms {
@@ -98,17 +96,40 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
             vars[term.variable] = value
         }
 
-        let reducedTerms = vars.map {
-            Term(variable: $0, coefficient: $1)
+        // Keep ordering of terms to maintain a consistency specially in serialization
+        let reducedTerms: [Term] = expr.terms.compactMap {
+            if let coeff = vars.removeValue(forKey: $0.variable) {
+                return $0.withCoefficient(coeff)
+            }
+
+            return nil
         }
 
         return Expression(terms: reducedTerms, constant: expr.constant)
     }
 
     /// Set the strength of the constraint
-    public func setStrength(_ newStrength: Double) -> Constraint {
+    public final func setStrength(_ newStrength: Double) -> Constraint {
         self.strength = newStrength
         return self
+    }
+
+    /// Returns `true` if this constraint is equivalent to another, down to the
+    /// variable names referenced, the order of the terms, and the constant.
+    internal func isEquivalent(to other: Constraint) -> Bool {
+        guard strength == other.strength else {
+            return false
+        }
+        guard expression.constant == other.expression.constant else {
+            return false
+        }
+        guard expression.terms.count == other.expression.terms.count else {
+            return false
+        }
+
+        return zip(expression.terms, other.expression.terms).allSatisfy { (t1, t2) in
+            return t1.coefficient == t2.coefficient && t1.variable.name == t2.variable.name
+        }
     }
 }
 

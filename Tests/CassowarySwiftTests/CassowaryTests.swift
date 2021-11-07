@@ -324,8 +324,8 @@ class CassowaryTests: XCTestCase {
             $0.addConstraint(right <= 100)
             $0.addConstraint(left >= 0)
 
-            $0.addEditVariable(variable: mid, strength: Strength.STRONG)
-            $0.suggestValue(variable: mid, value: 2)
+            $0.addEditVariable(mid, strength: Strength.STRONG)
+            $0.suggestValue(mid, value: 2)
         }
 
         solver.updateVariables()
@@ -367,8 +367,8 @@ class CassowaryTests: XCTestCase {
         try solver.withTransaction {
             $0.addConstraint(child.top == parent.top)
             $0.addConstraint(child.bottom == parent.bottom)
-            $0.addEditVariable(variable: child.height, strength: Strength.STRONG)
-            $0.suggestValue(variable: child.height, value: 24.0)
+            $0.addEditVariable(child.height, strength: Strength.STRONG)
+            $0.suggestValue(child.height, value: 24.0)
         }
 
         solver.updateVariables()
@@ -381,12 +381,12 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
 
         // Shouldn't be able to add with a REQUIRED strength
-        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.REQUIRED) })
+        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(v, strength: Strength.REQUIRED) })
 
-        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(v, strength: Strength.STRONG) })
 
         // Should throw a DuplicateEditVariable error.
-        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+        XCTAssertThrowsError(try solver.withTransaction { $0.addEditVariable(v, strength: Strength.STRONG) })
     }
 
     func testRemoveEditVariable() {
@@ -397,7 +397,7 @@ class CassowaryTests: XCTestCase {
         // Should throw an error- the edit variable hasn't been added yet.
         XCTAssertThrowsError(try solver.withTransaction { $0.removeEditVariable(v) })
 
-        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(v, strength: Strength.STRONG) })
         XCTAssertNoThrow(try solver.withTransaction { $0.removeEditVariable(v) })
     }
 
@@ -406,10 +406,10 @@ class CassowaryTests: XCTestCase {
         let solver = Solver()
 
         // Should throw an error, as it hasn't been added as an edit variable
-        XCTAssertThrowsError(try solver.withTransaction { $0.suggestValue(variable: v, value: 1.0) })
+        XCTAssertThrowsError(try solver.withTransaction { $0.suggestValue(v, value: 1.0) })
 
-        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(variable: v, strength: Strength.STRONG) })
-        XCTAssertNoThrow(try solver.withTransaction { $0.suggestValue(variable: v, value: 1.0) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.addEditVariable(v, strength: Strength.STRONG) })
+        XCTAssertNoThrow(try solver.withTransaction { $0.suggestValue(v, value: 1.0) })
     }
 
     func testGreaterThanOrEqualConstraint() throws {
@@ -419,10 +419,10 @@ class CassowaryTests: XCTestCase {
 
         try solver.withTransaction {
             $0.addConstraint(v2 >= v1 + 10)
-            $0.addEditVariable(variable: v1, strength: Strength.STRONG)
-            $0.addEditVariable(variable: v2, strength: Strength.MEDIUM)
-            $0.suggestValue(variable: v2, value: 0)
-            $0.suggestValue(variable: v1, value: 10)
+            $0.addEditVariable(v1, strength: Strength.STRONG)
+            $0.addEditVariable(v2, strength: Strength.MEDIUM)
+            $0.suggestValue(v2, value: 0)
+            $0.suggestValue(v1, value: 10)
         }
 
         solver.updateVariables()

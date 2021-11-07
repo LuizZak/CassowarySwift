@@ -1,8 +1,8 @@
 /// Intermediates changes to a `Solver` instance.
 public class SolverTransaction {
-    private var changes: [Change] = []
+    internal let solver: Solver
 
-    let solver: Solver
+    internal var changes: [Change] = []
 
     /// Whether this transaction has been cancelled with a call to `cancel`.
     private(set) public var isCancelled: Bool = false
@@ -22,7 +22,7 @@ public class SolverTransaction {
     }
 
     /// Registers a variable edit change to the solver, with a given strength.
-    public func addEditVariable(variable: Variable, strength: Double) {
+    public func addEditVariable(_ variable: Variable, strength: Double) {
         changes.append(.addEditVariable(variable, strength: strength))
     }
 
@@ -32,7 +32,7 @@ public class SolverTransaction {
     }
 
     /// Registers a variable value suggestion on the solver.
-    public func suggestValue(variable: Variable, value: Double) {
+    public func suggestValue(_ variable: Variable, value: Double) {
         changes.append(.suggestValue(variable, value: value))
     }
 
@@ -71,7 +71,7 @@ public class SolverTransaction {
         }
 
         try solver.setAutoSolve(true)
-        
+
         if updateVariables {
             solver.updateVariables()
         }
@@ -83,12 +83,12 @@ public class SolverTransaction {
     public func cancel() {
         isCancelled = true
     }
-}
 
-private enum Change {
-    case addConstraint(Constraint)
-    case removeConstraint(Constraint)
-    case addEditVariable(Variable, strength: Double)
-    case removeEditVariable(Variable)
-    case suggestValue(Variable, value: Double)
+    internal enum Change {
+        case addConstraint(Constraint)
+        case removeConstraint(Constraint)
+        case addEditVariable(Variable, strength: Double)
+        case removeEditVariable(Variable)
+        case suggestValue(Variable, value: Double)
+    }
 }

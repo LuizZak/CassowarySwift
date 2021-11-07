@@ -80,35 +80,35 @@ enum JSON: Codable {
             try container.encodeNil()
         }
     }
-    
+
     init<T: Encodable>(fromEncodable encodable: T) throws {
         let encoder = JSONEncoder()
         let data = try encoder.encode(encodable)
-        
+
         let decoder = JSONDecoder()
-        
+
         self = try decoder.decode(JSON.self, from: data)
     }
-    
+
     init(data: Data) throws {
         let decoder = JSONDecoder()
-        
+
         self = try decoder.decode(JSON.self, from: data)
     }
-    
+
     func decode<T: Decodable>(_ decodable: T.Type = T.self) throws -> T {
         let data = try asData()
-        
+
         let decoder = JSONDecoder()
-        
+
         return try decoder.decode(T.self, from: data)
     }
-    
+
     func asData() throws -> Data {
         let encoder = JSONEncoder()
         return try encoder.encode(self)
     }
-    
+
     enum JSONType: String {
         case dictionary
         case array
@@ -139,6 +139,25 @@ extension JSON: CustomStringConvertible {
             return bool.description
         case .null:
             return "null"
+        }
+    }
+
+    var swiftDescription: String {
+        switch self {
+        case .dictionary(let dictionary):
+            return "[" + dictionary.sorted(by: { $0.key < $1.key }).map {
+                #""\#($0)": \#($1.swiftDescription)"#
+            }.joined(separator: ", ") + "]"
+        case .array(let array):
+            return "[" + array.map(\.swiftDescription).joined(separator: ", ") + "]"
+        case .string(let string):
+            return #""\#(string)""#
+        case .number(let double):
+            return double.description
+        case .bool(let bool):
+            return bool.description
+        case .null:
+            return "nil"
         }
     }
 }
@@ -174,7 +193,7 @@ extension JSON {
             return nil
         }
     }
-    
+
     /// Returns the array of subvalues for this `JSON` in case it is an array,
     /// `nil` otherwise.
     var array: [JSON]? {
@@ -185,7 +204,7 @@ extension JSON {
             return nil
         }
     }
-    
+
     /// Returns a string for this `JSON` in case it is a string, `nil` otherwise.
     var string: String? {
         switch self {
@@ -195,7 +214,7 @@ extension JSON {
             return nil
         }
     }
-    
+
     /// Returns a `Double` for this `JSON` in case it is a number, `nil` otherwise.
     var double: Double? {
         switch self {
@@ -205,7 +224,7 @@ extension JSON {
             return nil
         }
     }
-    
+
     /// Returns a boolean for this `JSON` in case it is a bool, `nil` otherwise.
     var bool: Bool? {
         switch self {
@@ -215,7 +234,7 @@ extension JSON {
             return nil
         }
     }
-    
+
     /// Returns an integer for this `JSON` in case it is a number that is losslesly
     /// convertible to `Int`, `nil` otherwise.
     var int: Int? {
@@ -422,9 +441,9 @@ extension JSON: Collection {
 
     subscript(path path: JSONIndexer...) -> JSONSubscriptAccess {
         let accesses = path.map { $0.jsonIndex }
-        
+
         var json: JSON = self
-        
+
         for (i, access) in accesses.enumerated() {
             switch access {
             case .dictionary(let key):
@@ -445,7 +464,7 @@ extension JSON: Collection {
                 }
             }
         }
-        
+
         return .value(json)
     }
 }
@@ -471,16 +490,24 @@ enum JSONSubscriptAccess: Equatable {
     case notAnArray([JSONAccess])
     case notADictionary([JSONAccess])
     case keyNotFound([JSONAccess])
-    
-    var json: JSON? {
-        switch self {
-        case .value(let json):
-            return json
-        default:
-            return nil
+
+    /// Attempts to read this subscript access as any JSON value, throwing an
+    /// error if the keypath is invalid.
+    var json: JSON {
+        get throws {
+            switch self {
+            case .value(let json):
+                return json
+
+            case let .keyNotFound(path),
+                 let .notADictionary(path),
+                 let .notAnArray(path):
+
+                throw Error.invalidPath(path)
+            }
         }
     }
-    
+
     /// Attempts to read this subscript access as a decimal value, throwing an
     /// error if the keypath is invalid, or if the value is not a `Double`.
     var number: Double {
@@ -490,18 +517,18 @@ enum JSONSubscriptAccess: Equatable {
                 if let double = v.double {
                     return double
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Attempts to read this subscript access as an integer, throwing an
     /// error if the keypath is invalid, or if the value is not a `Integer`.
     var integer: Int {
@@ -511,18 +538,18 @@ enum JSONSubscriptAccess: Equatable {
                 if let double = v.double {
                     return Int(double)
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Attempts to read this subscript access as a string, throwing an
     /// error if the keypath is invalid, or if the value is not a `String`.
     var string: String {
@@ -532,18 +559,18 @@ enum JSONSubscriptAccess: Equatable {
                 if let string = v.string {
                     return string
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Attempts to read this subscript access as a boolean value, throwing an
     /// error if the keypath is invalid, or if the value is not a `Bool`.
     var bool: Bool {
@@ -553,18 +580,18 @@ enum JSONSubscriptAccess: Equatable {
                 if let bool = v.bool {
                     return bool
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Attempts to read this subscript access as an array value, throwing an
     /// error if the keypath is invalid, or if the value is not an array.
     var array: [JSON] {
@@ -574,18 +601,18 @@ enum JSONSubscriptAccess: Equatable {
                 if let array = v.array {
                     return array
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Attempts to read this subscript access as a dictionary value, throwing an
     /// error if the keypath is invalid, or if the value is not a dictionary.
     var dictionary: [String: JSON] {
@@ -595,31 +622,31 @@ enum JSONSubscriptAccess: Equatable {
                 if let dictionary = v.dictionary {
                     return dictionary
                 }
-                
+
                 throw Error.invalidValueType
-                
+
             case let .keyNotFound(path),
                  let .notADictionary(path),
                  let .notAnArray(path):
-                
+
                 throw Error.invalidPath(path)
             }
         }
     }
-    
+
     /// Returns whether this keypath access points to a `null ` JSON value.
     var isNull: Bool {
         get {
             switch self {
             case .value(let v):
                 return v == .null
-                
+
             default:
                 return false
             }
         }
     }
-    
+
     /// Returns whether this keypath access leads to a valid JSON value within
     /// the original JSON being accessed.
     var isValidKeypath: Bool {
@@ -630,25 +657,25 @@ enum JSONSubscriptAccess: Equatable {
             return false
         }
     }
-    
+
     func decode<T: Decodable>(_ decodable: T.Type = T.self) throws -> T {
         switch self {
         case .value(let v):
             return try v.decode()
-            
+
         case let .keyNotFound(path),
              let .notADictionary(path),
              let .notAnArray(path):
-            
+
             throw Error.invalidPath(path)
         }
     }
-    
+
     enum JSONAccess: Equatable {
         case index(Int)
         case dictionary(String)
     }
-    
+
     enum Error: Swift.Error {
         case invalidPath([JSONAccess])
         case invalidValueType

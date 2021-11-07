@@ -68,4 +68,8 @@ public struct Term: CustomStringConvertible, CassowaryDebugDescription {
             return "\(variable.description) * \(coefficient)"
         }
     }
+
+    public func withCoefficient(_ coeff: Double) -> Term {
+        return Term(variable: variable, coefficient: coeff)
+    }
 }

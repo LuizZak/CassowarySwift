@@ -32,12 +32,20 @@
             {
                 "label": "Build (debug)",
                 "type": "shell",
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				},
                 "command": "swift",
                 "args": ["build"]
             },
             {
                 "label": "Test",
                 "type": "shell",
+				"group": {
+					"kind": "test",
+					"isDefault": true
+				},
                 "command": "swift",
                 "args": ["test"]
             },
@@ -47,8 +55,17 @@
                 "command": "swift",
                 "args": [
                     "test",
-                    "-Xswiftc", "-DPERFORMANCE_TESTS",
-                    "-Xswiftc", "-O"
+                    "-Xswiftc", "-DPERFORMANCE_TESTS"
+                ]
+            },
+            {
+                "label": "Test (performance optimized)",
+                "type": "shell",
+                "command": "swift",
+                "args": [
+                    "test",
+					"-c", "release",
+                    "-Xswiftc", "-DPERFORMANCE_TESTS"
                 ]
             },
             {
@@ -113,7 +130,8 @@
 		"ShortcutMenuBar.userButton01Command": "workbench.action.tasks.runTask|Build (debug)",
         "ShortcutMenuBar.userButton02Command": "workbench.action.tasks.runTask|Test",
         "ShortcutMenuBar.userButton03Command": "workbench.action.tasks.runTask|Test (performance)",
-        "ShortcutMenuBar.userButton04Command": "workbench.action.tasks.runTask|Report build time (debug)",
+        "ShortcutMenuBar.userButton04Command": "workbench.action.tasks.runTask|Test (performance optimized)",
+        "ShortcutMenuBar.userButton05Command": "workbench.action.tasks.runTask|Report build time (debug)",
         "cSpell.words": [
             "coeff",
             "errminus",

@@ -29,6 +29,8 @@ class SymbolOrderedDictionaryTests: XCTestCase {
         XCTAssertTrue(ordered[0] == (Symbol(id: 3, symbolType: .external), "3"), ordered.description)
     }
 
+    #if PERFORMANCE_TESTS
+
     func testRemoveValueForKey_performance() {
         let count = 50_000
         var dict = SymbolOrderedDictionary<String>()
@@ -44,4 +46,6 @@ class SymbolOrderedDictionaryTests: XCTestCase {
             }
         }
     }
+
+    #endif
 }
