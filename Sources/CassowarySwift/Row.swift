@@ -87,6 +87,10 @@ final class Row: CustomStringConvertible {
      is zero, the symbol will be removed from the row
      */
     func insert(symbol: Symbol, coefficient: Double = 1.0) {
+        if coefficient == 0 {
+            return
+        }
+
         var coeff = coefficient
 
         if let existingCoefficient = cells[symbol] {
@@ -94,7 +98,7 @@ final class Row: CustomStringConvertible {
         }
 
         if coeff.isNearZero {
-            cells[symbol] = nil
+            cells.removeValue(forKey: symbol)
         } else {
             cells[symbol] = coeff
         }
@@ -108,6 +112,10 @@ final class Row: CustomStringConvertible {
      coefficient of zero will be removed from the row.
      */
     func insert(other: Row, coefficient: Double = 1.0) {
+        if coefficient == 0 {
+            return
+        }
+
         add(other.constant * coefficient)
 
         for (s, value) in other.cells {
@@ -143,8 +151,12 @@ final class Row: CustomStringConvertible {
      The given symbol *must* exist in the row.
      */
     func solveFor(_ symbol: Symbol) {
-        let coeff = -1.0 / cells[symbol]!
-        cells[symbol] = nil
+        guard let value = cells[symbol] else {
+            return
+        }
+
+        let coeff = -1.0 / value
+        cells.removeValue(forKey: symbol)
         constant *= coeff
 
         cells = cells.mapValues { value in

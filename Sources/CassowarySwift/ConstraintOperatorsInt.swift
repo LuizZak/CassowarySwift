@@ -40,7 +40,7 @@ extension Term {
 }
 
 extension Expression {
-    convenience init(constant: Int) {
+    init(constant: Int) {
         self.init(constant: Double(constant))
     }
 }

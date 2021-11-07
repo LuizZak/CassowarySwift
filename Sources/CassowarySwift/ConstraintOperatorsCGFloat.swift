@@ -42,7 +42,7 @@ extension Term {
 }
 
 extension Expression {
-    convenience init(constant: CGFloat) {
+    init(constant: CGFloat) {
         self.init(constant: Double(constant))
     }
 }

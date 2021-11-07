@@ -31,9 +31,9 @@
 
  */
 
-public final class Expression: CustomStringConvertible, CassowaryDebugDescription {
+public struct Expression: CustomStringConvertible, CassowaryDebugDescription {
     private weak var _owner: AnyObject?
-    
+
     private var _descGen: () -> String? = { nil }
     var debugDescription: String {
         get {
@@ -42,26 +42,27 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
                 var ident = ObjectIdentifier(_owner!).debugDescription
                 ident = ident.replacingOccurrences(of: "ObjectIdentifier(", with: "")
                 ident = ident.replacingOccurrences(of: ")", with: "")
-                
+
                 let varIdent = "\(typeName)(\(ident)).\(_alias ?? "?")"
                 return varIdent
             }
-            
+
             return _alias ?? _descGen() ?? ""
         }
         set {
             _descGen = { newValue }
         }
     }
-    
+
     func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
-        _descGen = desc
+        var copy = self
+        copy._descGen = desc
         return self
     }
-    
+
     /// The terms of the expression
     private(set) var terms: [Term] = []
-    
+
     /// The constant of the expression
     private(set) var constant: Double
 
@@ -70,45 +71,44 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
             result + term.value
         }
     }
-    
+
     private var _alias: String? = nil
 
     public var isConstant: Bool {
         return terms.count == 0
     }
-    
-    /// :nodoc:
+
     public var description: String {
         if _alias != nil {
             return _alias!
         }
-        
+
         var parts: [String] = [String]()
-        
+
         if !self.constant.isApproximately(value: 0.0) || self.isConstant {
             parts.append(String(self.constant))
         }
-        
+
         let termValues: [(Variable, Double)] = terms.map { ($0.variable, $0.coefficient) }.sorted {
             $0.0.name < $1.0.name
         }
-        
+
         for (variable, coefficient) in termValues {
             let ceStr: String = String(coefficient)
-            
+
             if coefficient.isApproximately(value: 1.0) {
                 parts.append(String(describing: variable))
             } else {
                 parts.append("\(ceStr) * \(String(describing: variable))")
             }
         }
-        
+
         return parts.joined(separator: " + ")
     }
 
     // MARK: Initializers
 
-    public convenience init() {
+    public init() {
         self.init(constant: 0.0)
     }
 
@@ -121,7 +121,7 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
         self.terms.append(term)
     }
 
-    public convenience init(term: Term) {
+    public init(term: Term) {
         self.init(term: term, constant: 0.0)
     }
 
@@ -130,15 +130,16 @@ public final class Expression: CustomStringConvertible, CassowaryDebugDescriptio
         self.terms = terms
     }
 
-    public convenience init(terms: [Term]) {
+    public init(terms: [Term]) {
         self.init(terms: terms, constant: 0)
     }
-    
+
     // MARK: Alias
-    
+
     public func setAlias(_ alias: String?, owner: AnyObject?) -> Expression {
-        _alias = alias
-        _owner = owner
-        return self
+        var copy = self
+        copy._alias = alias
+        copy._owner = owner
+        return copy
     }
 }
