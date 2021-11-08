@@ -637,8 +637,8 @@ public final class Solver {
     /// If a symbol already exists for the given variable, the reference count
     /// for the variable gets incremented and the existing is returned.
     private func createVarSymbol(_ variable: Variable) -> Symbol {
-        if let (symbol, _) = variableSymbols[variable] {
-            variableSymbols[variable]?.refCount += 1
+        if let (symbol, refCount) = variableSymbols[variable] {
+            variableSymbols[variable]!.refCount = refCount + 1
             return symbol
         } else {
             let symbol = createSymbol(type: .external)
