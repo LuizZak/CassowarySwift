@@ -73,6 +73,7 @@ public class SolverTransaction {
         try solver.setAutoSolve(true)
 
         if updateVariables {
+            solver.flushUnusedVariables()
             solver.updateVariables()
         }
     }

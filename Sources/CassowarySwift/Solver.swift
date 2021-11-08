@@ -128,6 +128,14 @@ public final class Solver {
         return string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Iterates over all variable -> symbol references removing any variable
+    /// entry that is no longer referenced by any constraint on this solver.
+    internal func flushUnusedVariables() {
+        for (variable, (_, refCount)) in variableSymbols where refCount <= 0 {
+            variableSymbols.removeValue(forKey: variable)
+        }
+    }
+
     @discardableResult
     internal func addConstraint(_ constraint: Constraint) throws -> Tag {
         if hasConstraint(constraint) {
@@ -161,10 +169,6 @@ public final class Solver {
             let variable = term.variable
 
             variableSymbols[variable]?.refCount -= 1
-
-            if variableSymbols[variable]?.refCount ?? 0 <= 0 {
-                variableSymbols.removeValue(forKey: variable)
-            }
         }
 
         removeConstraintEffects(constraint: constraint, tag: tag)
