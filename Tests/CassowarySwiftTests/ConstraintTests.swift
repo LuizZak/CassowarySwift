@@ -56,4 +56,32 @@ class ConstraintTests: XCTestCase {
         c1 = c1.addingDebugDescription("Test")
         XCTAssertEqual(c1.description, "EditConstraint<Test | Strength: REQUIRED>")
     }
+
+    func testHasSameEffectsAs() {
+        let v1 = Variable("v1")
+        let v2 = Variable("v2")
+        let v2_2 = Variable("v2")
+        let c1: Constraint = v1 == v2
+        let c2: Constraint = v1 == v2
+        let c3: Constraint = v1 == v2_2
+
+        XCTAssertTrue(c1.hasSameEffects(as: c1))
+        XCTAssertTrue(c1.hasSameEffects(as: c2))
+        XCTAssertFalse(c1.hasSameEffects(as: c3))
+        XCTAssertFalse(c2.hasSameEffects(as: c3))
+    }
+
+    func testIsEquivalentTo() {
+        let v1 = Variable("v1")
+        let v2 = Variable("v2")
+        let v2_2 = Variable("v2")
+        let c1: Constraint = v1 == v2
+        let c2: Constraint = v1 == v2
+        let c3: Constraint = v1 == v2_2
+
+        XCTAssertTrue(c1.isEquivalent(to: c1))
+        XCTAssertTrue(c1.isEquivalent(to: c2))
+        XCTAssertTrue(c1.isEquivalent(to: c3))
+        XCTAssertTrue(c2.isEquivalent(to: c3))
+    }
 }

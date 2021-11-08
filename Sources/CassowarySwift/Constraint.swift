@@ -123,9 +123,50 @@ public class Constraint: CassowaryDebugDescription, CustomStringConvertible {
         return self
     }
 
-    /// Returns `true` if this constraint is equivalent to another, down to the
-    /// variable names referenced, the order of the terms, and the constant.
+    /// Returns `true` if this constraint has the same effects on variables as
+    /// `other`.
+    ///
+    /// The comparison takes into consideration the strength, operator, and
+    /// expression.
+    ///
+    /// Two constraints have the same effects only if the terms of the expression
+    /// reference the same variables.
+    ///
+    /// The method always returns `true` for identical instances.
+    public final func hasSameEffects(as other: Constraint) -> Bool {
+        if self === other {
+            return true
+        }
+
+        guard strength == other.strength else {
+            return false
+        }
+        guard op == other.op else {
+            return false
+        }
+        guard expression.constant == other.expression.constant else {
+            return false
+        }
+        guard expression.terms.count == other.expression.terms.count else {
+            return false
+        }
+
+        return zip(expression.terms, other.expression.terms).allSatisfy { (t1, t2) in
+            return t1.coefficient == t2.coefficient && t1.variable == t2.variable
+        }
+    }
+
+    /// Returns `true` if this constraint's operator, strength, and expression is
+    /// equivalent to another. The expression is compared using variable names
+    /// only, and not identity (which may result in different behaviors when added
+    /// to the same solver).
+    ///
+    /// The method always returns `true` for identical instances.
     internal func isEquivalent(to other: Constraint) -> Bool {
+        if self === other {
+            return true
+        }
+
         guard strength == other.strength else {
             return false
         }
