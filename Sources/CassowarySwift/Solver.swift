@@ -152,7 +152,9 @@ public final class Solver {
 
         constraintDict[constraint] = tag
 
-        try optimize(objective: objective)
+        if autoSolve {
+            try optimize(objective: objective)
+        }
 
         return tag
     }

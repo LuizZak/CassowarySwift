@@ -57,7 +57,7 @@ public struct Expression: CustomStringConvertible, CassowaryDebugDescription {
     func addingDebugDescription(_ desc: @autoclosure @escaping () -> String) -> Self {
         var copy = self
         copy._descGen = desc
-        return self
+        return copy
     }
 
     /// The terms of the expression
