@@ -152,9 +152,7 @@ public final class Solver {
 
         constraintDict[constraint] = tag
 
-        if autoSolve {
-            try optimize(objective: objective)
-        }
+        try optimize(objective: objective)
 
         return tag
     }
@@ -261,6 +259,7 @@ public final class Solver {
         info.constant = value
         info.constraint.suggestedValue = value
 
+        // Check first if the positive error variable is basic.
         if let row = rows[info.tag.marker] {
             if row.add(-delta) < 0.0 {
                 infeasibleRows.append(info.tag.marker)
@@ -273,6 +272,7 @@ public final class Solver {
             return
         }
 
+        // Check next if the negative error variable is basic.
         if let otherTag = info.tag.other, let row = rows[otherTag] {
             if row.add(delta) < 0.0 {
                 infeasibleRows.append(otherTag)
@@ -285,6 +285,7 @@ public final class Solver {
             return
         }
 
+        // Otherwise update each row where the error variables exist.
         for (s, row) in rows {
             let coefficient = row.coefficientFor(info.tag.marker)
             if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
