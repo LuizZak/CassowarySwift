@@ -45,6 +45,35 @@ class PerformanceTests: XCTestCase {
         }
     }
 
+    func testPerformance_transactions_singleTransaction() throws {
+        let testFixturePath = fixturesPath
+            .appendingPathComponent("PerformanceTestFixture_transactions")
+            .appendingPathExtension("json")
+        let data = try Data(contentsOf: testFixturePath)
+
+        let transactions = try JSONDecoder().decode([JSON].self, from: data).map { try $0.asData() }
+
+        measureMetrics([.wallClockTime], automaticallyStartMeasuring: false) {
+            let solver = Solver()
+
+            do {
+                let next = transactions[0]
+
+                let tr = solver.startTransaction()
+
+                try SolverSerializer.deserialize(data: next, transaction: tr)
+
+                startMeasuring()
+
+                try tr.apply()
+
+                stopMeasuring()
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
     func testPerformance_validation_transactions() throws {
         let testFixturePath = fixturesPath
             .appendingPathComponent("ValidationTestFixture_transactions")
@@ -62,6 +91,7 @@ class PerformanceTests: XCTestCase {
                     let tr = solver.startTransaction()
 
                     try SolverSerializer.deserialize(data: next, transaction: tr)
+
                     try tr.apply()
                 }
             } catch {
