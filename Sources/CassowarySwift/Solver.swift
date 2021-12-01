@@ -81,7 +81,6 @@ public final class Solver {
     /// The solver starts with auto-solve on by default.
     public func setAutoSolve(_ autoSolve: Bool) throws {
         if !self.autoSolve && autoSolve {
-            try optimize(objective: objective)
             try dualOptimize()
         }
 
@@ -152,9 +151,7 @@ public final class Solver {
 
         constraintDict[constraint] = tag
 
-        if autoSolve {
-            try optimize(objective: objective)
-        }
+        try optimize(objective: objective)
 
         return tag
     }
@@ -182,9 +179,7 @@ public final class Solver {
             substitute(symbol: tag.marker, row: row)
         }
 
-        if autoSolve {
-            try optimize(objective: objective)
-        }
+        try optimize(objective: objective)
     }
 
     /// Check if the solver has a constraint
