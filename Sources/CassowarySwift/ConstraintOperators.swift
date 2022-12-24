@@ -154,7 +154,7 @@ public func + (_ expression: Expression, _ variable: Variable) -> Expression {
 
 public func + (_ expression: Expression, _ constant: Double) -> Expression {
     return Expression(terms: expression.terms, constant: expression.constant + constant)
-        .addingDebugDescription("(\(expression.debugDescription))¨ + \(constant)")
+        .addingDebugDescription("(\(expression.debugDescription)) + \(constant)")
 }
 
 public func - (_ first: Expression, _ second: Expression) -> Expression {
