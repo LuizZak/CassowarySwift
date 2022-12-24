@@ -256,37 +256,33 @@ public final class Solver {
         info.constant = value
         info.constraint.suggestedValue = value
 
-        // Check first if the positive error variable is basic.
-        if let row = rows[info.tag.marker] {
-            if row.add(-delta) < 0.0 {
-                infeasibleRows.append(info.tag.marker)
+        // Work around nto being able to defer `try dualOptimize()` since it throws
+        application:
+        do {
+            // Check first if the positive error variable is basic.
+            if let row = rows[info.tag.marker] {
+                if row.add(-delta) < 0.0 {
+                    infeasibleRows.append(info.tag.marker)
+                }
+
+                break application
             }
 
-            if autoSolve {
-                try dualOptimize()
+            // Check next if the negative error variable is basic.
+            if let otherTag = info.tag.other, let row = rows[otherTag] {
+                if row.add(delta) < 0.0 {
+                    infeasibleRows.append(otherTag)
+                }
+
+                break application
             }
 
-            return
-        }
-
-        // Check next if the negative error variable is basic.
-        if let otherTag = info.tag.other, let row = rows[otherTag] {
-            if row.add(delta) < 0.0 {
-                infeasibleRows.append(otherTag)
-            }
-
-            if autoSolve {
-                try dualOptimize()
-            }
-
-            return
-        }
-
-        // Otherwise update each row where the error variables exist.
-        for (s, row) in rows {
-            let coefficient = row.coefficientFor(info.tag.marker)
-            if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
-                infeasibleRows.append(s)
+            // Otherwise update each row where the error variables exist.
+            for (s, row) in rows {
+                let coefficient = row.coefficientFor(info.tag.marker)
+                if coefficient != 0.0 && row.add(delta * coefficient) < 0.0 && s.symbolType != .external {
+                    infeasibleRows.append(s)
+                }
             }
         }
 

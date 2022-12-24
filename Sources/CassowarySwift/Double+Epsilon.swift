@@ -32,14 +32,16 @@
  */
 
 internal extension Double {
+    @usableFromInline
     static let epsilon: Double = 1.0e-8
-    
+
+    @inlinable
     var isNearZero: Bool {
         return self < 0.0 ? -self < .epsilon : self < .epsilon
     }
 
+    @inlinable
     func isApproximately(value: Double) -> Bool {
         return abs(self - value) < .epsilon
     }
-
 }

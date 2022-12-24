@@ -546,6 +546,22 @@ class SolverSerializerTests: XCTestCase {
         XCTAssertEqual(expected, json, json.swiftDescription)
     }
 
+    func testSerializeTransaction_applyPartial() throws {
+        let expected: JSON = [
+            [
+                "change": "applyPartial"
+            ]
+        ]
+        let solver = Solver()
+        let tr = solver.startTransaction()
+        tr.applyPartial()
+
+        let data = try SolverSerializer.serialize(transaction: tr)
+
+        let json = try JSON(data: data)
+        XCTAssertEqual(expected, json, json.swiftDescription)
+    }
+
     func testDeserializeTransaction_addConstraint() throws {
         let json: JSON = [
             [
@@ -864,6 +880,26 @@ class SolverSerializerTests: XCTestCase {
         switch tr.changes[1] {
         case .removeEditVariable(let v) where v.name == "v1":
             XCTAssertIdentical(v, var1, "Expected variable in recent transaction deserializing to be reused")
+        default:
+            XCTFail("Unexpected change array: \(tr.changes)")
+        }
+    }
+
+    func testDeserializeTransaction_applyPartial() throws {
+        let json: JSON = [
+            [
+                "change": "applyPartial",
+            ]
+        ]
+        let solver = Solver()
+        let tr = solver.startTransaction()
+
+        try SolverSerializer.deserialize(data: json.asData(), transaction: tr)
+
+        XCTAssertEqual(tr.changes.count, 1)
+        switch tr.changes[0] {
+        case .applyPartial:
+            break
         default:
             XCTFail("Unexpected change array: \(tr.changes)")
         }

@@ -105,6 +105,11 @@ public enum SolverSerializer {
                     "change": "removeEditVariable",
                     "variable": v.name.json
                 ]
+
+            case .applyPartial:
+                changeJson = [
+                    "change": "applyPartial"
+                ]
             }
 
             data.append(changeJson)
@@ -203,6 +208,9 @@ public enum SolverSerializer {
                 }
 
                 transaction.removeEditVariable(variable)
+
+            case "applyPartial":
+                transaction.applyPartial()
 
             case let other:
                 throw Error.unknownTransactionOperation(other)

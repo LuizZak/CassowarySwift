@@ -36,6 +36,15 @@ public class SolverTransaction {
         changes.append(.suggestValue(variable, value: value))
     }
 
+    /// Registers a partial application on the solver.
+    ///
+    /// When this registered operation is read back by `apply(updateVariables:)`,
+    /// a dual optimization is performed on the solver before continuing with
+    /// further operations.
+    public func applyPartial() {
+        changes.append(.applyPartial)
+    }
+
     /// Applies all changes registered on this transaction, in the order that
     /// they where submitted to this transaction.
     ///
@@ -67,6 +76,10 @@ public class SolverTransaction {
 
             case let .suggestValue(variable, value):
                 try solver.suggestValue(variable: variable, value: value)
+
+            case .applyPartial:
+                try solver.setAutoSolve(true)
+                try solver.setAutoSolve(false)
             }
         }
 
@@ -91,5 +104,6 @@ public class SolverTransaction {
         case addEditVariable(Variable, strength: Double)
         case removeEditVariable(Variable)
         case suggestValue(Variable, value: Double)
+        case applyPartial
     }
 }

@@ -41,7 +41,6 @@ class ValidationTests: XCTestCase {
 
                 if solverVar.value != expectedValue {
                     XCTFail("Expected variable \(varName) to have value of \(expectedValue) after transaction #\(i + 1), but found \(solverVar.value)")
-                    return
                 }
             }
         }
