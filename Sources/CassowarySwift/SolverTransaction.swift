@@ -42,6 +42,10 @@ public class SolverTransaction {
     /// a dual optimization is performed on the solver before continuing with
     /// further operations.
     public func applyPartial() {
+        if changes.isEmpty || changes.last?.isApplyPartial == true {
+            return
+        }
+
         changes.append(.applyPartial)
     }
 
@@ -105,5 +109,14 @@ public class SolverTransaction {
         case removeEditVariable(Variable)
         case suggestValue(Variable, value: Double)
         case applyPartial
+
+        var isApplyPartial: Bool {
+            switch self {
+            case .applyPartial:
+                return true
+            default:
+                return false
+            }
+        }
     }
 }
