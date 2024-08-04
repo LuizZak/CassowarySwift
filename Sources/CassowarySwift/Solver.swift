@@ -183,7 +183,7 @@ public final class Solver {
     }
 
     /// Check if the solver has a constraint
-    internal func hasConstraint(_ constraint: Constraint) -> Bool {
+    public func hasConstraint(_ constraint: Constraint) -> Bool {
         return constraintDict[constraint] != nil
     }
 
