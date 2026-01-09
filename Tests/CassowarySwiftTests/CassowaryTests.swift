@@ -354,7 +354,7 @@ class CassowaryTests: XCTestCase {
         class Constrainable {
             let top = Variable("top")
             let height = Variable("height")
-            var bottom: Expression {
+            var bottom: CassowarySwift.Expression {
                 return top + height
             }
         }
@@ -429,5 +429,276 @@ class CassowaryTests: XCTestCase {
 
         XCTAssertEqual(v1.value, 10.0)
         XCTAssertEqual(v2.value, 20.0)
+    }
+
+    func testSimple2() throws {
+        let solver: Solver = Solver()
+
+        let x: Variable = Variable("x")
+
+        try solver.withTransaction {
+            $0.addConstraint(x + 2.0 == 20.0)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 18.0)
+    }
+
+    func testSimple3() throws {
+        let solver: Solver = Solver()
+
+        let x: Variable = Variable("x")
+        let y: Variable = Variable("y")
+
+        try solver.withTransaction {
+            $0.addConstraint(x == 20.0)
+            $0.addConstraint(x + 2.0 == y + 10.0)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 20.0)
+        XCTAssertEqual(y.value, 12.0)
+    }
+
+    func testSimple4() throws {
+        let solver: Solver = Solver()
+
+        let x: Variable = Variable("x")
+        let y: Variable = Variable("y")
+
+        try solver.withTransaction {
+            $0.addConstraint(x <= y)
+            $0.addConstraint(y == x + 3.0)
+            $0.addConstraint((x == 10.0).setStrength(Strength.WEAK))
+            $0.addConstraint((y == 10.0).setStrength(Strength.WEAK))
+        }
+
+        solver.updateVariables()
+
+        if x.value == 10.0 {
+            XCTAssertEqual(x.value, 10.0)
+            XCTAssertEqual(y.value, 13.0)
+        } else {
+            XCTAssertEqual(x.value, 7.0)
+            XCTAssertEqual(y.value, 10.0)
+        }
+    }
+
+    func testComplex1() throws {
+        let solver: Solver = Solver()
+
+        let x: Variable = Variable("x")
+
+        try solver.withTransaction {
+            $0.addConstraint((x <= 100.0).setStrength(Strength.WEAK))
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 100.0)
+
+        let c10: Constraint = x <= 10.0
+        let c20: Constraint = x <= 20.0
+
+        try solver.withTransaction {
+            $0.addConstraint(c10)
+            $0.addConstraint(c20)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 10.0)
+
+        try solver.withTransaction {
+            $0.removeConstraint(c10)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 20.0)
+
+        try solver.withTransaction {
+            $0.removeConstraint(c20)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 100.0)
+    }
+
+    func testComplex2() throws {
+        let solver: Solver = Solver()
+
+        let x: Variable = Variable("x")
+        let y: Variable = Variable("y")
+
+        try solver.withTransaction {
+            $0.addConstraint((x == 100).setStrength(Strength.WEAK))
+            $0.addConstraint((y == 120).setStrength(Strength.STRONG))
+        }
+
+        let c10: Constraint = x <= 10.0
+        let c20: Constraint = x <= 20.0
+
+        try solver.withTransaction {
+            $0.addConstraint(c10)
+            $0.addConstraint(c20)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 10.0)
+        XCTAssertEqual(y.value, 120.0)
+
+        try solver.withTransaction {
+            $0.removeConstraint(c10)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 20.0)
+        XCTAssertEqual(y.value, 120.0)
+
+        let cxy: Constraint = x * 2.0 == y
+
+        try solver.withTransaction {
+            $0.addConstraint(cxy)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 20.0)
+        XCTAssertEqual(y.value, 40.0)
+
+        try solver.withTransaction {
+            $0.removeConstraint(c20)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 60.0)
+        XCTAssertEqual(y.value, 120.0)
+
+        try solver.withTransaction {
+            $0.removeConstraint(cxy)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x.value, 100.0)
+        XCTAssertEqual(y.value, 120.0)
+    }
+
+    func testUnderConstrainedSystem() throws {
+        let solver: Solver = Solver()
+        let v: Variable = Variable("v")
+        let c: Constraint = 2.0 * v + 1.0 >= 0.0
+
+        try solver.withTransaction {
+            $0.addEditVariable(v, strength: Strength.WEAK)
+            $0.addConstraint(c)
+            $0.suggestValue(v, value: 10)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(c.expression.value, 21)
+        XCTAssertEqual(c.expression.terms[0].value, 20)
+        XCTAssertEqual(c.expression.terms[0].variable.value, 10)
+    }
+
+    func testWithStrength() throws {
+        let solver: Solver = Solver()
+        let v: Variable = Variable("v")
+        let w: Variable = Variable("w")
+
+        try solver.withTransaction {
+            $0.addConstraint(v + w == 0.0)
+            $0.addConstraint(v == 10.0)
+            $0.addConstraint((w >= 0.0).setStrength(Strength.WEAK))
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(v.value, 10)
+        XCTAssertEqual(w.value, -10)
+    }
+
+    func testWithStrength2() throws {
+        let solver: Solver = Solver()
+
+        let v: Variable = Variable("v")
+        let w: Variable = Variable("w")
+
+        try solver.withTransaction {
+            $0.addConstraint(v + w == 0.0)
+            $0.addConstraint((v >= 10.0).setStrength(Strength.MEDIUM))
+            $0.addConstraint((w == 2.0).setStrength(Strength.STRONG))
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(v.value, -2)
+        XCTAssertEqual(w.value, 2)
+    }
+
+    func testHandlingInfeasibleConstraints() throws {
+        let solver: Solver = Solver()
+
+        let x_m: Variable = Variable("xm")
+        let x_l: Variable = Variable("xl")
+        let x_r: Variable = Variable("xr")
+
+        try solver.withTransaction {
+            $0.addEditVariable(x_m, strength: Strength.STRONG)
+            $0.addEditVariable(x_l, strength: Strength.WEAK)
+            $0.addEditVariable(x_r, strength: Strength.WEAK)
+
+            $0.addConstraint(2.0 * x_m == x_l + x_r)
+            $0.addConstraint(x_l + 20.0 <= x_r)
+            $0.addConstraint(x_l >= -10.0)
+            $0.addConstraint(x_r <= 100.0)
+
+            $0.suggestValue(x_m, value: 40)
+            $0.suggestValue(x_r, value: 50)
+            $0.suggestValue(x_l, value: 30)
+
+            // First update causing a normal update.
+            $0.suggestValue(x_m, value: 60)
+
+            // Create an infeasible condition, triggering a dual optimization.
+            $0.suggestValue(x_m, value: 90)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(x_l.value + x_r.value, 2 * x_m.value)
+        XCTAssertEqual(x_l.value, 80)
+        XCTAssertEqual(x_r.value, 100)
+    }
+
+    // Terms must be evaluated in insertion order
+    func testMultiTermExpressionOrder() throws {
+        let solver: Solver = Solver()
+
+        let c: Variable = Variable("c")
+        let a: Variable = Variable("a")
+        let b: Variable = Variable("b")
+
+        try solver.withTransaction {
+            $0.addEditVariable(c, strength: Strength.STRONG)
+            $0.addConstraint((a >= 0).setStrength(Strength.STRONG))
+            $0.addConstraint((b >= a).setStrength(Strength.STRONG))
+            $0.addConstraint((b - a == c).setStrength(Strength.REQUIRED))
+            $0.suggestValue(c, value: 100)
+        }
+
+        solver.updateVariables()
+
+        XCTAssertEqual(a.value, 0)
+        XCTAssertEqual(b.value, 100)
+        XCTAssertEqual(c.value, 100)
     }
 }

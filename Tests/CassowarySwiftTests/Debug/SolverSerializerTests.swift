@@ -549,11 +549,19 @@ class SolverSerializerTests: XCTestCase {
     func testSerializeTransaction_applyPartial() throws {
         let expected: JSON = [
             [
+                "change": "suggestValue",
+                "variable": "v1",
+                "value": 1234.0
+            ],
+            [
                 "change": "applyPartial"
             ]
         ]
         let solver = Solver()
+        let v1 = Variable("v1")
         let tr = solver.startTransaction()
+
+        tr.suggestValue(v1, value: 1234.0)
         tr.applyPartial()
 
         let data = try SolverSerializer.serialize(transaction: tr)
@@ -888,6 +896,11 @@ class SolverSerializerTests: XCTestCase {
     func testDeserializeTransaction_applyPartial() throws {
         let json: JSON = [
             [
+                "change": "addEditVariable",
+                "variable": "v1",
+                "strength": 1.0
+            ],
+            [
                 "change": "applyPartial",
             ]
         ]
@@ -896,8 +909,8 @@ class SolverSerializerTests: XCTestCase {
 
         try SolverSerializer.deserialize(data: json.asData(), transaction: tr)
 
-        XCTAssertEqual(tr.changes.count, 1)
-        switch tr.changes[0] {
+        XCTAssertEqual(tr.changes.count, 2)
+        switch tr.changes.last {
         case .applyPartial:
             break
         default:
