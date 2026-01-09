@@ -1,4 +1,4 @@
-// swift-tools-version:4.2
+// swift-tools-version:5.0
 import PackageDescription
 
 let package = Package(
@@ -6,14 +6,22 @@ let package = Package(
     products: [
         .library(
             name: "CassowarySwift",
-            targets: ["CassowarySwift"]),
+            targets: ["CassowarySwift"]
+        ),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.3.0"),
     ],
     targets: [
         .target(
             name: "CassowarySwift",
-            dependencies: []),
+            dependencies: [
+                .product(name: "OrderedCollections", package: "swift-collections"),
+            ]
+        ),
         .testTarget(
             name: "CassowarySwiftTests",
-            dependencies: ["CassowarySwift"]),
+            dependencies: ["CassowarySwift"]
+        ),
     ]
 )
